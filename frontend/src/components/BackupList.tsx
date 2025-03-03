@@ -54,8 +54,23 @@ export default function BackupList() {
         return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
       case 'failed':
         return <XCircleIcon className="h-5 w-5 text-red-500" />;
+      case 'in_progress':
+        return <ClockIcon className="h-5 w-5 text-blue-500" />;
       default:
         return <ClockIcon className="h-5 w-5 text-yellow-500" />;
+    }
+  };
+
+  const getStatusClass = (status: Backup['status']) => {
+    switch (status) {
+      case 'completed':
+        return 'status-completed';
+      case 'failed':
+        return 'status-failed';
+      case 'in_progress':
+        return 'status-in-progress';
+      default:
+        return 'status-pending';
     }
   };
 
@@ -102,7 +117,9 @@ export default function BackupList() {
               <td className="table-cell">
                 <div className="flex items-center">
                   {getStatusIcon(backup.status)}
-                  <span className="ml-2">{backup.status}</span>
+                  <span className={`ml-2 ${getStatusClass(backup.status)}`}>
+                    {backup.status.replace('_', ' ')}
+                  </span>
                 </div>
               </td>
               <td className="table-cell">{backup.sourcePath}</td>

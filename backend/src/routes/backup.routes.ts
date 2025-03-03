@@ -4,10 +4,12 @@ import { Backup } from '../entities/Backup';
 import { Target } from '../entities/Target';
 import { logger } from '../utils/logger';
 import { Equal } from 'typeorm';
+import { BackupService } from '../services/backup.service';
 
 const router = Router();
 const backupRepository = AppDataSource.getRepository(Backup);
 const targetRepository = AppDataSource.getRepository(Target);
+const backupService = new BackupService();
 
 // Get all backups
 router.get('/', async (req: Request, res: Response) => {
@@ -70,6 +72,7 @@ router.post('/', async (req: Request, res: Response) => {
       sourcePath,
       target,
       status: 'pending',
+      size: 0,
     });
     
     await backupRepository.save(backup);
@@ -78,6 +81,12 @@ router.post('/', async (req: Request, res: Response) => {
     const savedBackup = await backupRepository.findOne({
       where: { id: backup.id },
       relations: ['target'],
+    });
+    
+    // Start the backup process in the background
+    // We don't await this to avoid blocking the response
+    backupService.performManualBackup(backup.id).catch(err => {
+      logger.error('Error performing backup:', err);
     });
     
     res.status(201).json(savedBackup);

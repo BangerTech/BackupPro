@@ -16,7 +16,7 @@ export class Backup {
   @Column({ nullable: true })
   errorMessage?: string;
 
-  @Column()
+  @Column({ nullable: true, default: 0 })
   size: number;
 
   @CreateDateColumn()

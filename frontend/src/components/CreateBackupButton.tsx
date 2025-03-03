@@ -75,8 +75,8 @@ export default function CreateBackupButton() {
       setSourcePath('');
       setTargetId('');
       
-      // Redirect to backups page to see the new backup
-      router.push('/backups');
+      // Redirect to dashboard page to see the new backup
+      router.push('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create backup');
     } finally {
