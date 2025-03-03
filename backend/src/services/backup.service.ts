@@ -89,8 +89,18 @@ export class BackupService {
       const hostSourcePath = this.convertToHostPath(backup.sourcePath);
       logger.info(`Performing backup from ${backup.sourcePath} (mapped to ${hostSourcePath})`);
       
+      // Prüfe, ob der Quellpfad ein Verzeichnis ist
       const stats = await fs.stat(hostSourcePath);
-      backup.size = stats.size;
+      const isDirectory = stats.isDirectory();
+      
+      if (isDirectory) {
+        // Für Verzeichnisse berechnen wir die Größe später nach der Komprimierung
+        logger.info(`Source is a directory. Size will be calculated after compression.`);
+        backup.size = 0; // Vorläufig auf 0 setzen
+      } else {
+        // Für Dateien verwenden wir die direkte Dateigröße
+        backup.size = stats.size;
+      }
 
       // Lade die Target-Relation, falls sie noch nicht geladen ist
       let target: Target;
@@ -191,6 +201,12 @@ export class BackupService {
         // Komprimiere das Verzeichnis
         logger.info(`Compressing directory to ${archivePath}`);
         await this.compressDirectory(hostSourcePath, archivePath);
+        
+        // Aktualisiere die Backup-Größe mit der Größe des komprimierten Archivs
+        const archiveStats = await fs.stat(archivePath);
+        backup.size = archiveStats.size;
+        await this.backupRepository.save(backup);
+        logger.info(`Updated backup size to ${backup.size} bytes (compressed archive size)`);
         
         // Übertrage die komprimierte Datei
         const remoteFilePath = path.posix.join(sftpConfig.remotePath, archiveName);
