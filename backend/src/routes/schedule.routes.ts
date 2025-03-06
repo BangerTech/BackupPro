@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Schedule } from '../entities/Schedule';
 import { Target } from '../entities/Target';
+import { Backup } from '../entities/Backup';
 import { logger } from '../utils/logger';
 import { Equal } from 'typeorm';
 import { cronService } from '../services/cron.service';
@@ -9,6 +10,7 @@ import { cronService } from '../services/cron.service';
 const router = Router();
 const scheduleRepository = AppDataSource.getRepository(Schedule);
 const targetRepository = AppDataSource.getRepository(Target);
+const backupRepository = AppDataSource.getRepository(Backup);
 
 // Get all schedules
 router.get('/', async (req: Request, res: Response) => {
@@ -162,6 +164,27 @@ router.delete('/:id', async (req: Request, res: Response) => {
       // Continue with deletion even if stopping the cron job fails
     }
     
+    // Find the schedule with its backups
+    const schedule = await scheduleRepository.findOne({
+      where: { id: req.params.id },
+      relations: ['backups']
+    });
+    
+    if (!schedule) {
+      return res.status(404).json({ error: 'Schedule not found' });
+    }
+    
+    // Delete all backups associated with this schedule
+    if (schedule.backups && schedule.backups.length > 0) {
+      logger.info(`Deleting ${schedule.backups.length} backups associated with schedule ${req.params.id}`);
+      
+      // Delete each backup
+      for (const backup of schedule.backups) {
+        await backupRepository.delete({ id: backup.id });
+      }
+    }
+    
+    // Now delete the schedule
     const result = await scheduleRepository.delete({ id: req.params.id });
     
     if (result.affected === 0) {
