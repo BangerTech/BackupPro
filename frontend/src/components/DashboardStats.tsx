@@ -59,22 +59,25 @@ export default function DashboardStats() {
       return `${Math.round(size)} ${units[unitIndex]}`;
     }
     
-    // Für MB und größer immer eine Dezimalstelle anzeigen
-    // Wir verwenden toFixed(1) um genau eine Dezimalstelle anzuzeigen
+    // Für MB und größer nur eine Dezimalstelle anzeigen
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
   if (loading) {
-    return <div className="loading-spinner" />;
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 p-4">
+      <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-100 dark:border-red-800">
         <div className="flex">
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
-            <div className="mt-2 text-sm text-red-700">{error}</div>
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+            <div className="mt-2 text-sm text-red-700 dark:text-red-200">{error}</div>
           </div>
         </div>
       </div>
@@ -82,16 +85,17 @@ export default function DashboardStats() {
   }
 
   return (
-    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Total Backups Card */}
+      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-xl border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md dark:hover:bg-gray-700">
         <div className="p-5">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ChartBarIcon className="h-6 w-6 text-gray-400" />
+            <div className="flex-shrink-0 bg-blue-100 dark:bg-blue-900/30 p-3 rounded-full">
+              <ChartBarIcon className="h-6 w-6 text-blue-600 dark:text-blue-300" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
                   Total Backups
                 </dt>
                 <dd className="flex items-baseline">
@@ -105,15 +109,16 @@ export default function DashboardStats() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+      {/* Active Schedules Card */}
+      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-xl border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md dark:hover:bg-gray-700">
         <div className="p-5">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ClockIcon className="h-6 w-6 text-gray-400" />
+            <div className="flex-shrink-0 bg-purple-100 dark:bg-purple-900/30 p-3 rounded-full">
+              <ClockIcon className="h-6 w-6 text-purple-600 dark:text-purple-300" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
                   Active Schedules
                 </dt>
                 <dd className="flex items-baseline">
@@ -127,15 +132,16 @@ export default function DashboardStats() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+      {/* Total Storage Card */}
+      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-xl border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md dark:hover:bg-gray-700">
         <div className="p-5">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <ServerIcon className="h-6 w-6 text-gray-400" />
+            <div className="flex-shrink-0 bg-green-100 dark:bg-green-900/30 p-3 rounded-full">
+              <ServerIcon className="h-6 w-6 text-green-600 dark:text-green-300" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
                   Total Storage
                 </dt>
                 <dd className="flex items-baseline">
@@ -149,15 +155,16 @@ export default function DashboardStats() {
         </div>
       </div>
 
-      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow rounded-lg">
+      {/* Success Rate Card */}
+      <div className="bg-white dark:bg-gray-800 overflow-hidden shadow-sm rounded-xl border border-gray-100 dark:border-gray-700 transition-all hover:shadow-md dark:hover:bg-gray-700">
         <div className="p-5">
           <div className="flex items-center">
-            <div className="flex-shrink-0">
-              <CheckCircleIcon className="h-6 w-6 text-gray-400" />
+            <div className="flex-shrink-0 bg-amber-100 dark:bg-amber-900/30 p-3 rounded-full">
+              <CheckCircleIcon className="h-6 w-6 text-amber-600 dark:text-amber-300" />
             </div>
             <div className="ml-5 w-0 flex-1">
               <dl>
-                <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
+                <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
                   Success Rate
                 </dt>
                 <dd className="flex items-baseline">

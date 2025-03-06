@@ -36,7 +36,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     // Aktualisiere die Zeit jede Sekunde
     const updateTime = () => {
       const now = new Date();
-      setCurrentTime(now.toLocaleTimeString());
+      setCurrentTime(now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
     };
     
     // Initialisiere die Zeit sofort
@@ -59,8 +59,8 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         <title>BackupPro</title>
       </Head>
       
-      {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
+      {/* Header - iOS-Style */}
+      <header className="bg-white dark:bg-gray-800 shadow-sm backdrop-blur-lg bg-opacity-90 dark:bg-opacity-90 sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center">
             {/* Logo - jetzt klickbar für Theme Toggle */}
@@ -83,52 +83,55 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 </div>
               )}
             </div>
-            {/* Titel entfernt */}
           </div>
 
-          {/* Aktuelle Systemzeit */}
-          <div className="text-gray-700 dark:text-gray-300 font-medium">
+          {/* Aktuelle Systemzeit - iOS-Style */}
+          <div className="text-lg font-medium text-gray-700 dark:text-gray-200 bg-gray-100 dark:bg-gray-700 px-4 py-1 rounded-full">
             {mounted && currentTime}
           </div>
         </div>
       </header>
 
-      {/* Navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <nav className="flex space-x-4 py-4" aria-label="Tabs">
-          {navigation.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                className={`
-                  group flex items-center px-3 py-2 text-sm font-medium rounded-md
-                  ${isActive
-                    ? 'bg-primary-100 dark:bg-primary-900 text-primary-700 dark:text-primary-200'
-                    : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
-                  }
-                `}
-              >
-                <item.icon 
+      {/* Navigation - Zentriert und iOS-Style */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+        <nav className="flex justify-center" aria-label="Tabs">
+          <div className="inline-flex p-1 space-x-1 bg-gray-100 dark:bg-gray-800 rounded-xl">
+            {navigation.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
                   className={`
-                    mr-3 h-5 w-5
+                    flex items-center px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200
                     ${isActive
-                      ? 'text-primary-500 dark:text-primary-400'
-                      : 'text-gray-400 dark:text-gray-500 group-hover:text-gray-500 dark:group-hover:text-gray-400'
+                      ? 'bg-white dark:bg-gray-700 text-primary-600 dark:text-primary-300 shadow-sm'
+                      : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-white/50 dark:hover:bg-gray-700/50'
                     }
                   `}
-                />
-                {item.name}
-              </Link>
-            );
-          })}
+                >
+                  <item.icon 
+                    className={`
+                      mr-2 h-5 w-5
+                      ${isActive
+                        ? 'text-primary-500 dark:text-primary-300'
+                        : 'text-gray-500 dark:text-gray-400'
+                      }
+                    `}
+                  />
+                  {item.name}
+                </Link>
+              );
+            })}
+          </div>
         </nav>
       </div>
 
-      {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {children}
+      {/* Main Content - iOS-Style */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="bg-white dark:bg-gray-800 shadow-sm rounded-xl p-6">
+          {children}
+        </div>
       </main>
     </div>
   );

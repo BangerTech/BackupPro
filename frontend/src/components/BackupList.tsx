@@ -104,8 +104,7 @@ export default function BackupList() {
       return `${Math.round(size)} ${units[unitIndex]}`;
     }
     
-    // Für MB und größer immer eine Dezimalstelle anzeigen
-    // Wir verwenden toFixed(1) um genau eine Dezimalstelle anzuzeigen
+    // Für MB und größer nur eine Dezimalstelle anzeigen
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
@@ -116,7 +115,7 @@ export default function BackupList() {
       case 'failed':
         return <XCircleIcon className="h-5 w-5 text-red-500" />;
       case 'in_progress':
-        return <ClockIcon className="h-5 w-5 text-blue-500" />;
+        return <ClockIcon className="h-5 w-5 text-blue-500 animate-pulse" />;
       default:
         return <ClockIcon className="h-5 w-5 text-yellow-500" />;
     }
@@ -125,28 +124,32 @@ export default function BackupList() {
   const getStatusClass = (status: Backup['status']) => {
     switch (status) {
       case 'completed':
-        return 'status-completed';
+        return 'text-green-600 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full text-xs font-medium';
       case 'failed':
-        return 'status-failed';
+        return 'text-red-600 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full text-xs font-medium';
       case 'in_progress':
-        return 'status-in-progress';
+        return 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full text-xs font-medium';
       default:
-        return 'status-pending';
+        return 'text-yellow-600 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-full text-xs font-medium';
     }
   };
 
   if (loading) {
-    return <div className="loading-spinner" />;
+    return (
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 p-4">
+      <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-100 dark:border-red-800">
         <div className="flex">
-          <XCircleIcon className="h-5 w-5 text-red-400" />
+          <XCircleIcon className="h-5 w-5 text-red-400 dark:text-red-300" />
           <div className="ml-3">
-            <h3 className="text-sm font-medium text-red-800">Error</h3>
-            <div className="mt-2 text-sm text-red-700">{error}</div>
+            <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
+            <div className="mt-2 text-sm text-red-700 dark:text-red-200">{error}</div>
           </div>
         </div>
       </div>
@@ -155,43 +158,61 @@ export default function BackupList() {
 
   if (backups.length === 0) {
     return (
-      <div className="text-center py-6">
-        <p className="text-sm text-gray-500">No backups found</p>
+      <div className="text-center py-8 bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <ClockIcon className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+        <p className="text-gray-500 dark:text-gray-400">No backups found</p>
       </div>
     );
   }
 
   return (
-    <div className="table-container">
-      <table className="table">
-        <thead className="table-header">
-          <tr>
-            <th className="table-header-cell">Status</th>
-            <th className="table-header-cell">Source</th>
-            <th className="table-header-cell">Size</th>
-            <th className="table-header-cell">Created</th>
-          </tr>
-        </thead>
-        <tbody className="table-body">
-          {backups.map((backup) => (
-            <tr key={backup.id} className="table-row">
-              <td className="table-cell">
-                <div className="flex items-center">
-                  {getStatusIcon(backup.status)}
-                  <span className={`ml-2 ${getStatusClass(backup.status)}`}>
-                    {backup.status.replace('_', ' ')}
-                  </span>
-                </div>
-              </td>
-              <td className="table-cell">{backup.sourcePath}</td>
-              <td className="table-cell">{formatSize(backup.size)}</td>
-              <td className="table-cell">
-                {format(new Date(backup.createdAt), 'PPp')}
-              </td>
+    <div className="overflow-hidden bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+          <thead className="bg-gray-50 dark:bg-gray-700">
+            <tr>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                Status
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                Source
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                Size
+              </th>
+              <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                Created
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+            {backups.map((backup) => (
+              <tr 
+                key={backup.id} 
+                className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    {getStatusIcon(backup.status)}
+                    <span className={`ml-2 ${getStatusClass(backup.status)}`}>
+                      {backup.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
+                  <div className="max-w-xs truncate">{backup.sourcePath}</div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
+                  {formatSize(backup.size)}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
+                  {format(new Date(backup.createdAt), 'PPp')}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 } 
