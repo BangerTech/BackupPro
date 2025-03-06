@@ -1,11 +1,13 @@
 import { Router, Request, Response } from 'express';
 import { AppDataSource } from '../data-source';
 import { Target } from '../entities/Target';
+import { Backup } from '../entities/Backup';
 import { logger } from '../utils/logger';
 import { Equal } from 'typeorm';
 
 const router = Router();
 const targetRepository = AppDataSource.getRepository(Target);
+const backupRepository = AppDataSource.getRepository(Backup);
 
 // Get all targets
 router.get('/', async (req: Request, res: Response) => {
@@ -63,6 +65,14 @@ router.post('/', async (req: Request, res: Response) => {
         username: config.username,
         password: config.password
       };
+    } else if (type === 'smb') {
+      target.credentials = {
+        host: config.host,
+        username: config.username,
+        password: config.password,
+        domain: config.domain,
+        share: config.share
+      };
     } else if (type === 'dropbox' || type === 'google_drive') {
       target.credentials = {
         accessToken: config.accessToken
@@ -107,6 +117,14 @@ router.put('/:id', async (req: Request, res: Response) => {
         username: config.username,
         password: config.password
       };
+    } else if (type === 'smb') {
+      target.credentials = {
+        host: config.host,
+        username: config.username,
+        password: config.password,
+        domain: config.domain,
+        share: config.share
+      };
     } else if (type === 'dropbox' || type === 'google_drive') {
       target.credentials = {
         accessToken: config.accessToken
@@ -135,6 +153,53 @@ router.delete('/:id', async (req: Request, res: Response) => {
   } catch (error) {
     logger.error('Error deleting target:', error);
     res.status(500).json({ error: 'Failed to delete target' });
+  }
+});
+
+// Get storage information
+router.get('/storage', async (req: Request, res: Response) => {
+  try {
+    // Holen Sie alle Backups mit ihren Zielen
+    const backups = await backupRepository.find({
+      relations: ['target'],
+    });
+
+    // Gruppieren Sie Backups nach Zielpfad
+    const storageMap = new Map();
+    
+    for (const backup of backups) {
+      if (!backup.target) continue;
+      
+      const key = `${backup.target.type}:${backup.target.path}`;
+      
+      if (!storageMap.has(key)) {
+        storageMap.set(key, {
+          path: backup.target.path,
+          type: backup.target.type,
+          size: 0,
+          backupCount: 0,
+          lastBackup: null
+        });
+      }
+      
+      const storageInfo = storageMap.get(key);
+      storageInfo.size += backup.size || 0;
+      storageInfo.backupCount += 1;
+      
+      // Aktualisieren Sie das Datum des letzten Backups, wenn dieses Backup neuer ist
+      const backupDate = new Date(backup.createdAt);
+      if (!storageInfo.lastBackup || backupDate > new Date(storageInfo.lastBackup)) {
+        storageInfo.lastBackup = backup.createdAt;
+      }
+    }
+    
+    // Konvertieren Sie die Map in ein Array
+    const storageInfo = Array.from(storageMap.values());
+    
+    res.json(storageInfo);
+  } catch (error) {
+    logger.error('Error fetching storage information:', error);
+    res.status(500).json({ error: 'Failed to fetch storage information' });
   }
 });
 

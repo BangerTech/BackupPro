@@ -15,6 +15,8 @@ interface TargetConfig {
   accessToken?: string;
   clientId?: string;
   clientSecret?: string;
+  share?: string;
+  domain?: string;
 }
 
 interface CreateTargetButtonProps {
@@ -35,7 +37,7 @@ const OAUTH_CONFIG = {
 export default function CreateTargetButton({ onTargetCreated }: CreateTargetButtonProps = {}) {
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
-  const [type, setType] = useState<'local' | 'sftp' | 'dropbox' | 'google_drive'>('local');
+  const [type, setType] = useState<'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive'>('local');
   const [config, setConfig] = useState<TargetConfig>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -110,6 +112,14 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
     if (type === 'sftp') {
       if (!config.host || !config.username || !config.password) {
         setError('Host, username, and password are required for SFTP targets');
+        return;
+      }
+    }
+    
+    // Validate SMB fields
+    if (type === 'smb') {
+      if (!config.host || !config.share || !config.username || !config.password) {
+        setError('Host, share, username, and password are required for SMB targets');
         return;
       }
     }
@@ -335,6 +345,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                   >
                     <option value="local">Local</option>
                     <option value="sftp">SFTP</option>
+                    <option value="smb">SMB</option>
                     <option value="dropbox">Dropbox</option>
                     <option value="google_drive">Google Drive</option>
                   </select>
@@ -447,6 +458,100 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                       <input
                         type="text"
                         id="sftp-path"
+                        value={config.path || ''}
+                        onChange={(e) => setConfig({ ...config, path: e.target.value })}
+                        className="input-field"
+                        placeholder="/remote/path"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {type === 'smb' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="host" className="form-label mb-1">
+                        Host
+                      </label>
+                      <input
+                        type="text"
+                        id="host"
+                        value={config.host || ''}
+                        onChange={(e) => setConfig({ ...config, host: e.target.value })}
+                        className="input-field"
+                        placeholder="192.168.1.100"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="share" className="form-label mb-1">
+                        Share Name
+                      </label>
+                      <input
+                        type="text"
+                        id="share"
+                        value={config.share || ''}
+                        onChange={(e) => setConfig({ ...config, share: e.target.value })}
+                        className="input-field"
+                        placeholder="backup"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="username" className="form-label mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        id="username"
+                        value={config.username || ''}
+                        onChange={(e) => setConfig({ ...config, username: e.target.value })}
+                        className="input-field"
+                        placeholder="username"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="password" className="form-label mb-1">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        id="password"
+                        value={config.password || ''}
+                        onChange={(e) => setConfig({ ...config, password: e.target.value })}
+                        className="input-field"
+                        placeholder="password"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="domain" className="form-label mb-1">
+                        Domain (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="domain"
+                        value={config.domain || ''}
+                        onChange={(e) => setConfig({ ...config, domain: e.target.value })}
+                        className="input-field"
+                        placeholder="WORKGROUP"
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="smb-path" className="form-label mb-1">
+                        Remote Path
+                      </label>
+                      <input
+                        type="text"
+                        id="smb-path"
                         value={config.path || ''}
                         onChange={(e) => setConfig({ ...config, path: e.target.value })}
                         className="input-field"

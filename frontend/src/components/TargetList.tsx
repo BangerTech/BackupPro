@@ -14,12 +14,14 @@ interface TargetConfig {
   username?: string;
   password?: string;
   accessToken?: string;
+  share?: string;
+  domain?: string;
 }
 
 interface Target {
   id: string;
   name: string;
-  type: 'local' | 'sftp' | 'dropbox' | 'google_drive';
+  type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
   path: string;
   config: TargetConfig;
   createdAt: string;
@@ -36,7 +38,7 @@ export default function TargetList() {
   const [editingTarget, setEditingTarget] = useState<Target | null>(null);
   const [editForm, setEditForm] = useState<{
     name: string;
-    type: 'local' | 'sftp' | 'dropbox' | 'google_drive';
+    type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
     config: TargetConfig;
   }>({
     name: '',
@@ -169,6 +171,14 @@ export default function TargetList() {
       }
     }
     
+    // Validate SMB fields
+    if (editForm.type === 'smb') {
+      if (!editForm.config.host || !editForm.config.share || !editForm.config.username || !editForm.config.password) {
+        setEditError('Host, share, username, and password are required for SMB targets');
+        return;
+      }
+    }
+    
     // Validate cloud storage tokens
     if ((editForm.type === 'dropbox' || editForm.type === 'google_drive') && !editForm.config.accessToken) {
       setEditError('Access token is required for cloud storage targets');
@@ -205,6 +215,8 @@ export default function TargetList() {
         return '💻';
       case 'sftp':
         return '🔒';
+      case 'smb':
+        return '🔄';
       case 'dropbox':
         return '📦';
       case 'google_drive':
@@ -400,6 +412,7 @@ export default function TargetList() {
                   >
                     <option value="local">Local</option>
                     <option value="sftp">SFTP</option>
+                    <option value="smb">SMB</option>
                     <option value="dropbox">Dropbox</option>
                     <option value="google_drive">Google Drive</option>
                   </select>
@@ -515,6 +528,100 @@ export default function TargetList() {
                         onChange={(e) => handleEditFormChange('config.path', e.target.value)}
                         className="input-field"
                         placeholder="/remote/backup/path"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {editForm.type === 'smb' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="host" className="form-label mb-1">
+                        Host
+                      </label>
+                      <input
+                        type="text"
+                        id="host"
+                        value={editForm.config.host || ''}
+                        onChange={(e) => handleEditFormChange('config.host', e.target.value)}
+                        className="input-field"
+                        placeholder="192.168.1.100"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="share" className="form-label mb-1">
+                        Share Name
+                      </label>
+                      <input
+                        type="text"
+                        id="share"
+                        value={editForm.config.share || ''}
+                        onChange={(e) => handleEditFormChange('config.share', e.target.value)}
+                        className="input-field"
+                        placeholder="backup"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="username" className="form-label mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        id="username"
+                        value={editForm.config.username || ''}
+                        onChange={(e) => handleEditFormChange('config.username', e.target.value)}
+                        className="input-field"
+                        placeholder="username"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="password" className="form-label mb-1">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        id="password"
+                        value={editForm.config.password || ''}
+                        onChange={(e) => handleEditFormChange('config.password', e.target.value)}
+                        className="input-field"
+                        placeholder="password"
+                        required
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="domain" className="form-label mb-1">
+                        Domain (Optional)
+                      </label>
+                      <input
+                        type="text"
+                        id="domain"
+                        value={editForm.config.domain || ''}
+                        onChange={(e) => handleEditFormChange('config.domain', e.target.value)}
+                        className="input-field"
+                        placeholder="WORKGROUP"
+                        disabled={isSubmitting}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label htmlFor="smb-path" className="form-label mb-1">
+                        Remote Path
+                      </label>
+                      <input
+                        type="text"
+                        id="smb-path"
+                        value={editForm.config.path || ''}
+                        onChange={(e) => handleEditFormChange('config.path', e.target.value)}
+                        className="input-field"
+                        placeholder="/remote/path"
                         required
                         disabled={isSubmitting}
                       />

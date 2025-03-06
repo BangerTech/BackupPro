@@ -20,6 +20,7 @@ export default function BackupList() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const maxDisplayedBackups = 5; // Begrenze die Anzeige auf 5 Einträge
 
   useEffect(() => {
     // Fetch backups immediately when component mounts
@@ -99,40 +100,15 @@ export default function BackupList() {
       unitIndex++;
     }
 
-    // Für kleine Werte (B, KB) keine Dezimalstellen
     if (unitIndex <= 1) {
       return `${Math.round(size)} ${units[unitIndex]}`;
     }
     
-    // Für MB und größer nur eine Dezimalstelle anzeigen
     return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
-  const getStatusIcon = (status: Backup['status']) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircleIcon className="h-5 w-5 text-green-500" />;
-      case 'failed':
-        return <XCircleIcon className="h-5 w-5 text-red-500" />;
-      case 'in_progress':
-        return <ClockIcon className="h-5 w-5 text-blue-500 animate-pulse" />;
-      default:
-        return <ClockIcon className="h-5 w-5 text-yellow-500" />;
-    }
-  };
-
-  const getStatusClass = (status: Backup['status']) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600 dark:text-green-300 bg-green-100 dark:bg-green-900/30 px-2 py-1 rounded-full text-xs font-medium';
-      case 'failed':
-        return 'text-red-600 dark:text-red-300 bg-red-100 dark:bg-red-900/30 px-2 py-1 rounded-full text-xs font-medium';
-      case 'in_progress':
-        return 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full text-xs font-medium';
-      default:
-        return 'text-yellow-600 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-full text-xs font-medium';
-    }
-  };
+  // Begrenze die Anzahl der angezeigten Backups auf maxDisplayedBackups
+  const displayedBackups = backups.slice(0, maxDisplayedBackups);
 
   if (loading) {
     return (
@@ -186,18 +162,21 @@ export default function BackupList() {
             </tr>
           </thead>
           <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-            {backups.map((backup) => (
+            {displayedBackups.map((backup) => (
               <tr 
                 key={backup.id} 
                 className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    {getStatusIcon(backup.status)}
-                    <span className={`ml-2 ${getStatusClass(backup.status)}`}>
-                      {backup.status.replace('_', ' ')}
-                    </span>
-                  </div>
+                  {backup.status === 'completed' && (
+                    <CheckCircleIcon className="h-5 w-5 text-green-500" />
+                  )}
+                  {backup.status === 'failed' && (
+                    <XCircleIcon className="h-5 w-5 text-red-500" />
+                  )}
+                  {(backup.status === 'pending' || backup.status === 'in_progress') && (
+                    <ClockIcon className="h-5 w-5 text-blue-500 animate-pulse" />
+                  )}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
                   <div className="max-w-xs truncate">{backup.sourcePath}</div>
@@ -206,12 +185,19 @@ export default function BackupList() {
                   {formatSize(backup.size)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">
-                  {format(new Date(backup.createdAt), 'PPp')}
+                  {new Date(backup.createdAt).toLocaleString()}
                 </td>
               </tr>
             ))}
           </tbody>
         </table>
+        {backups.length > maxDisplayedBackups && (
+          <div className="mt-4 text-center pb-4">
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Showing {maxDisplayedBackups} of {backups.length} backups
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );

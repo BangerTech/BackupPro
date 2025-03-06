@@ -27,6 +27,16 @@ interface SftpConfig {
   remotePath: string;
 }
 
+// Interface für SMB-Konfiguration
+interface SmbConfig {
+  host: string;
+  username: string;
+  password?: string;
+  domain?: string;
+  share: string;
+  remotePath: string;
+}
+
 export class BackupService {
   private backupRepository: Repository<Backup>;
   private scheduleRepo = AppDataSource.getRepository(Schedule);
@@ -130,6 +140,9 @@ export class BackupService {
           break;
         case 'sftp':
           await this.performSftpBackup(backup, target);
+          break;
+        case 'smb':
+          await this.performSmbBackup(backup, target);
           break;
         case 'dropbox':
           await this.performDropboxBackup(backup, target);
@@ -345,6 +358,254 @@ export class BackupService {
     } catch (error) {
       logger.error('Compression failed:', error instanceof Error ? error.message : 'Unknown error occurred');
       throw new Error(`Failed to compress directory: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  private async performSmbBackup(backup: Backup, target: Target): Promise<void> {
+    logger.info(`Starting SMB backup to ${target.path}`);
+    
+    try {
+      // Überprüfe, ob die erforderlichen Anmeldeinformationen vorhanden sind
+      if (!target.credentials || !target.credentials.host || !target.credentials.username || !target.credentials.share) {
+        throw new Error('Missing SMB credentials. Host, username, and share are required.');
+      }
+      
+      // Erstelle SMB-Konfiguration aus den Anmeldeinformationen
+      const smbConfig: SmbConfig = {
+        host: target.credentials.host,
+        username: target.credentials.username,
+        password: target.credentials.password,
+        domain: target.credentials.domain,
+        share: target.credentials.share,
+        remotePath: target.path || ''
+      };
+      
+      // Stelle sicher, dass der Remote-Pfad keine führenden oder nachfolgenden Slashes hat
+      smbConfig.remotePath = smbConfig.remotePath.replace(/^\/+|\/+$/g, '');
+      
+      // Konvertieren des Pfads zum Host-Dateisystem-Pfad
+      const hostSourcePath = this.convertToHostPath(backup.sourcePath);
+      logger.info(`Source path converted to host path: ${hostSourcePath}`);
+      
+      // Prüfe, ob der Quellpfad existiert
+      try {
+        await fs.access(hostSourcePath);
+      } catch (error) {
+        throw new Error(`Source path does not exist: ${hostSourcePath}`);
+      }
+      
+      // Prüfe, ob der Quellpfad ein Verzeichnis ist
+      const stats = await fs.stat(hostSourcePath);
+      const isDirectory = stats.isDirectory();
+      
+      if (isDirectory) {
+        // Wenn es ein Verzeichnis ist, komprimiere es zuerst
+        logger.info(`Source path is a directory. Compressing ${hostSourcePath} before upload`);
+        
+        const sourceFileName = path.basename(hostSourcePath);
+        const tempDir = '/tmp';
+        const archiveName = `${sourceFileName}_${Date.now()}.tar.gz`;
+        const archivePath = path.join(tempDir, archiveName);
+        
+        // Komprimiere das Verzeichnis
+        logger.info(`Compressing directory to ${archivePath}`);
+        await this.compressDirectory(hostSourcePath, archivePath);
+        
+        // Aktualisiere die Backup-Größe mit der Größe des komprimierten Archivs
+        const archiveStats = await fs.stat(archivePath);
+        backup.size = archiveStats.size;
+        await this.backupRepository.save(backup);
+        logger.info(`Updated backup size to ${backup.size} bytes (compressed archive size)`);
+        
+        // Übertrage die komprimierte Datei
+        const remoteFilePath = smbConfig.remotePath ? `${smbConfig.remotePath}/${archiveName}` : archiveName;
+        logger.info(`Uploading compressed archive ${archivePath} to ${smbConfig.host}:${remoteFilePath}`);
+        
+        await this.uploadFileViaSmb(archivePath, remoteFilePath, smbConfig);
+        
+        // Lösche die temporäre Archivdatei
+        await fs.unlink(archivePath);
+        logger.info(`Deleted temporary archive ${archivePath}`);
+      } else {
+        // Wenn es eine Datei ist, übertrage sie direkt
+        const sourceFileName = path.basename(hostSourcePath);
+        const remoteFilePath = smbConfig.remotePath ? `${smbConfig.remotePath}/${sourceFileName}` : sourceFileName;
+        
+        logger.info(`Uploading file ${hostSourcePath} to ${smbConfig.host}:${remoteFilePath}`);
+        await this.uploadFileViaSmb(hostSourcePath, remoteFilePath, smbConfig);
+      }
+      
+      logger.info(`SMB backup completed successfully`);
+    } catch (error) {
+      logger.error('SMB backup failed:', error instanceof Error ? error.message : 'Unknown error occurred');
+      throw error;
+    }
+  }
+  
+  private async uploadFileViaSmb(localFilePath: string, remoteFilePath: string, config: SmbConfig): Promise<void> {
+    try {
+      // Überprüfe, ob die lokale Datei existiert
+      try {
+        await fs.access(localFilePath);
+        const stats = await fs.stat(localFilePath);
+        logger.info(`Local file exists: ${localFilePath}, size: ${stats.size} bytes`);
+      } catch (error) {
+        throw new Error(`Local file does not exist: ${localFilePath}`);
+      }
+
+      // Erstelle das Zielverzeichnis
+      const remoteDirPath = path.dirname(remoteFilePath);
+      await this.ensureSmbDirectoryExists(config, remoteDirPath);
+      
+      // Erstelle den smbclient-Befehl
+      const remoteFileName = path.basename(remoteFilePath);
+      const shareUrl = `//${config.host}/${config.share}`;
+      
+      // Formatiere den Pfad für SMB (Backslashes statt Slashes)
+      const formattedRemotePath = config.remotePath.replace(/\//g, '\\');
+      
+      // Erstelle den Authentifizierungsstring
+      let authParams = '';
+      if (config.domain) {
+        authParams += ` -W ${config.domain}`;
+      }
+      
+      // Direkter Ansatz: Verwende einen einzelnen Befehl ohne temporäre Datei
+      // Verwende -D für das Verzeichnis und -c für den Befehl
+      const smbCommand = `smbclient "${shareUrl}" "${config.password || ''}" -U ${config.username}${authParams} -D "${formattedRemotePath}" -c "put \\"${localFilePath}\\" \\"${remoteFileName}\\""`;
+      
+      logger.info(`Executing direct SMB command to upload file: ${path.basename(localFilePath)} to ${formattedRemotePath}/${remoteFileName}`);
+      const { stdout, stderr } = await execPromise(smbCommand);
+      
+      logger.info(`SMB upload stdout: ${stdout}`);
+      if (stderr) {
+        logger.info(`SMB upload stderr: ${stderr}`);
+      }
+      
+      // Überprüfe, ob es ein echter Fehler ist oder nur eine Erfolgsmeldung
+      // Erfolgsmeldungen enthalten typischerweise "putting file" und "kb/s"
+      if (stderr && 
+          !stderr.includes('NT_STATUS_OK') && 
+          !stderr.includes('putting file') && 
+          !stderr.includes('kb/s')) {
+        throw new Error(`SMB error: ${stderr}`);
+      }
+      
+      // Warte einen Moment, um sicherzustellen, dass die Datei auf dem Server angekommen ist
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Überprüfe, ob die Datei tatsächlich hochgeladen wurde
+      // Verwende einen einfacheren Befehl, der nur den Inhalt des Verzeichnisses auflistet
+      const verifyCommand = `smbclient "${shareUrl}" "${config.password || ''}" -U ${config.username}${authParams} -D "${formattedRemotePath}" -c "ls"`;
+      
+      try {
+        logger.info(`Executing verification command: ${verifyCommand}`);
+        const { stdout: verifyStdout, stderr: verifyStderr } = await execPromise(verifyCommand);
+        
+        logger.info(`Verification stdout: ${verifyStdout}`);
+        if (verifyStderr) {
+          logger.info(`Verification stderr: ${verifyStderr}`);
+        }
+        
+        // Überprüfe, ob der Dateiname in der Ausgabe enthalten ist
+        if (verifyStdout.includes(remoteFileName)) {
+          logger.info(`File verified on SMB share: ${remoteFileName}`);
+        } else {
+          logger.warn(`File not found in directory listing: ${remoteFileName}`);
+          logger.warn(`Directory contents: ${verifyStdout}`);
+          
+          // Versuche es mit einem alternativen Befehl
+          try {
+            // Versuche es mit einem direkten Zugriff auf die Datei
+            const directAccessCommand = `smbclient "${shareUrl}" "${config.password || ''}" -U ${config.username}${authParams} -c "get \\"${formattedRemotePath}\\\\${remoteFileName}\\" /tmp/verify_${remoteFileName}"`;
+            logger.info(`Trying direct file access: ${directAccessCommand}`);
+            
+            await execPromise(directAccessCommand);
+            logger.info(`Direct file access successful, file exists`);
+            
+            // Lösche die temporäre Datei
+            await fs.unlink(`/tmp/verify_${remoteFileName}`);
+          } catch (directAccessError) {
+            logger.error(`Direct file access failed: ${directAccessError instanceof Error ? directAccessError.message : 'Unknown error'}`);
+            throw new Error(`File verification failed: File not found on SMB share`);
+          }
+        }
+      } catch (verifyError) {
+        logger.warn(`File verification failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`);
+        
+        // Wenn die Überprüfung fehlschlägt, aber die Ausgabe des Upload-Befehls "putting file" und "kb/s" enthält,
+        // gehen wir davon aus, dass der Upload erfolgreich war
+        if (stderr && stderr.includes('putting file') && stderr.includes('kb/s')) {
+          logger.info(`Upload seems successful based on stderr output, despite verification failure`);
+        } else {
+          throw new Error(`File verification failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`);
+        }
+      }
+      
+      logger.info(`File successfully uploaded to SMB share`);
+    } catch (error) {
+      logger.error('SMB upload failed:', error instanceof Error ? error.message : 'Unknown error occurred');
+      throw new Error(`Failed to upload file to SMB share: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+  
+  private async ensureSmbDirectoryExists(config: SmbConfig, dirPath: string): Promise<void> {
+    try {
+      // Formatiere den Pfad für SMB (Backslashes statt Slashes)
+      const formattedPath = dirPath.replace(/\//g, '\\');
+      
+      // Erstelle eine temporäre Datei mit den SMB-Befehlen
+      const tempCommandFile = `/tmp/smb_mkdir_commands_${Date.now()}.txt`;
+      
+      // Erstelle jeden Teil des Pfades einzeln
+      const pathParts = formattedPath.split('\\').filter(part => part.length > 0);
+      let currentPath = '';
+      let commands = '';
+      
+      for (const part of pathParts) {
+        currentPath += `\\${part}`;
+        commands += `mkdir "${currentPath}"\n`;
+      }
+      
+      commands += 'quit\n';
+      
+      await fs.writeFile(tempCommandFile, commands);
+      
+      // Erstelle den Authentifizierungsstring
+      let authParams = '';
+      if (config.domain) {
+        authParams += ` -W ${config.domain}`;
+      }
+      
+      // Führe den smbclient-Befehl aus
+      const shareUrl = `//${config.host}/${config.share}`;
+      const smbCommand = `smbclient "${shareUrl}" "${config.password || ''}" -U ${config.username}${authParams} -c "$(cat ${tempCommandFile})"`;
+      
+      logger.info(`Creating directory structure on SMB share: ${formattedPath}`);
+      const { stdout, stderr } = await execPromise(smbCommand);
+      
+      // Lösche die temporäre Befehlsdatei
+      await fs.unlink(tempCommandFile);
+      
+      // Ignoriere Fehler, wenn das Verzeichnis bereits existiert
+      if (stderr && !stderr.includes('NT_STATUS_OK') && !stderr.includes('NT_STATUS_OBJECT_NAME_COLLISION')) {
+        throw new Error(`SMB error: ${stderr}`);
+      }
+      
+      // Überprüfe, ob das Verzeichnis tatsächlich erstellt wurde
+      const verifyCommand = `smbclient "${shareUrl}" "${config.password || ''}" -U ${config.username}${authParams} -c "cd ${formattedPath}; pwd"`;
+      
+      try {
+        await execPromise(verifyCommand);
+        logger.info(`Directory structure verified on SMB share: ${formattedPath}`);
+      } catch (verifyError) {
+        logger.warn(`Directory verification failed: ${verifyError instanceof Error ? verifyError.message : 'Unknown error'}`);
+      }
+      
+      logger.info(`Directory structure created or already exists on SMB share: ${stdout}`);
+    } catch (error) {
+      logger.error('Failed to ensure SMB directory exists:', error instanceof Error ? error.message : 'Unknown error occurred');
+      throw new Error(`Failed to ensure SMB directory exists: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
 

@@ -6,6 +6,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     curl \
     netcat-openbsd \
+    smbclient \
     && rm -rf /var/lib/apt/lists/*
 
 COPY package*.json ./

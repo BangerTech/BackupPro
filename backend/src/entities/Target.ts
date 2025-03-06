@@ -11,7 +11,7 @@ export class Target {
   name: string;
 
   @Column()
-  type: 'local' | 'sftp' | 'dropbox' | 'google_drive';
+  type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
 
   @Column()
   path: string;
@@ -24,6 +24,8 @@ export class Target {
     password?: string;
     privateKey?: string;
     accessToken?: string;
+    domain?: string;
+    share?: string;
   };
 
   @OneToMany(() => Backup, (backup: Backup) => backup.target)
