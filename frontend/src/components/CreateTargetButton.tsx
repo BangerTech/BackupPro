@@ -258,9 +258,8 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
   return (
     <>
       <button
-        type="button"
-        className="btn-primary"
         onClick={() => setIsOpen(true)}
+        className="btn-primary flex items-center"
       >
         <PlusIcon className="h-5 w-5 mr-2" />
         Add Target
@@ -272,12 +271,12 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
         className="relative z-50"
       >
         <div className="fixed inset-0 bg-black/30 dark:bg-black/70" aria-hidden="true" />
-
+        
         <div className="fixed inset-0 flex items-center justify-center p-4 overflow-y-auto">
           <Dialog.Panel className="mx-auto max-w-2xl w-full rounded-lg bg-white dark:bg-gray-800 shadow-xl">
             <div className="flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4">
               <Dialog.Title className="text-lg font-medium text-gray-900 dark:text-white">
-                Add New Backup Target
+                Add Backup Target
               </Dialog.Title>
               <button
                 type="button"
@@ -287,8 +286,21 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                 <XMarkIcon className="h-6 w-6" aria-hidden="true" />
               </button>
             </div>
-
-            <form onSubmit={handleSubmit} className="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+            
+            <form onSubmit={handleSubmit} className="p-6 space-y-6">
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md">
+                  <div className="flex">
+                    <div className="flex-shrink-0">
+                      <XMarkIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+                    </div>
+                    <div className="ml-3">
+                      <p className="text-sm text-red-700 dark:text-red-400">{error}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
               <div className="grid grid-cols-1 gap-6">
                 <div>
                   <label htmlFor="name" className="form-label mb-1">
@@ -302,6 +314,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                     className="input-field"
                     placeholder="My Backup Target"
                     required
+                    disabled={loading}
                   />
                 </div>
 
@@ -318,14 +331,132 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                       setShowOAuthInstructions(false);
                     }}
                     className="input-field"
-                    required
+                    disabled={loading}
                   >
-                    <option value="local">Local Directory</option>
-                    <option value="sftp">SFTP Server</option>
+                    <option value="local">Local</option>
+                    <option value="sftp">SFTP</option>
                     <option value="dropbox">Dropbox</option>
                     <option value="google_drive">Google Drive</option>
                   </select>
                 </div>
+
+                {/* Dynamic config fields based on type */}
+                {type === 'local' && (
+                  <div>
+                    <label htmlFor="path" className="form-label mb-1">
+                      Local Path
+                    </label>
+                    <div className="flex space-x-2">
+                      <input
+                        type="text"
+                        id="path"
+                        value={config.path || ''}
+                        onChange={(e) => setConfig({ ...config, path: e.target.value })}
+                        className="input-field flex-1"
+                        placeholder="/path/to/backups"
+                        required
+                        disabled={loading}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowFileExplorer(!showFileExplorer)}
+                        className="btn-secondary whitespace-nowrap"
+                        disabled={loading}
+                      >
+                        Browse
+                      </button>
+                    </div>
+                    
+                    {showFileExplorer && (
+                      <div className="mt-4 border border-gray-200 dark:border-gray-700 rounded-md overflow-hidden">
+                        <FileExplorer 
+                          onSelect={handlePathSelect}
+                          initialPath="/"
+                          showFiles={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {type === 'sftp' && (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="host" className="form-label mb-1">
+                        Host
+                      </label>
+                      <input
+                        type="text"
+                        id="host"
+                        value={config.host || ''}
+                        onChange={(e) => setConfig({ ...config, host: e.target.value })}
+                        className="input-field"
+                        placeholder="example.com"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="port" className="form-label mb-1">
+                        Port
+                      </label>
+                      <input
+                        type="number"
+                        id="port"
+                        value={config.port || 22}
+                        onChange={(e) => setConfig({ ...config, port: parseInt(e.target.value) })}
+                        className="input-field"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="username" className="form-label mb-1">
+                        Username
+                      </label>
+                      <input
+                        type="text"
+                        id="username"
+                        value={config.username || ''}
+                        onChange={(e) => setConfig({ ...config, username: e.target.value })}
+                        className="input-field"
+                        placeholder="username"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div>
+                      <label htmlFor="password" className="form-label mb-1">
+                        Password
+                      </label>
+                      <input
+                        type="password"
+                        id="password"
+                        value={config.password || ''}
+                        onChange={(e) => setConfig({ ...config, password: e.target.value })}
+                        className="input-field"
+                        placeholder="password"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                    <div className="md:col-span-2">
+                      <label htmlFor="sftp-path" className="form-label mb-1">
+                        Remote Path
+                      </label>
+                      <input
+                        type="text"
+                        id="sftp-path"
+                        value={config.path || ''}
+                        onChange={(e) => setConfig({ ...config, path: e.target.value })}
+                        className="input-field"
+                        placeholder="/remote/path"
+                        required
+                        disabled={loading}
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {/* OAuth Credentials Section */}
                 {(type === 'dropbox' || type === 'google_drive') && (
@@ -359,6 +490,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                           className="input-field"
                           placeholder={`Enter your ${type === 'dropbox' ? 'Dropbox' : 'Google'} Client ID`}
                           required
+                          disabled={loading}
                         />
                       </div>
                       
@@ -374,106 +506,11 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                           className="input-field"
                           placeholder={`Enter your ${type === 'dropbox' ? 'Dropbox' : 'Google'} Client Secret`}
                           required
+                          disabled={loading}
                         />
                       </div>
                     </div>
                   </div>
-                )}
-
-                {/* Path Selection */}
-                <div>
-                  <label htmlFor="path" className="form-label mb-1">
-                    {type === 'local' ? 'Local Path' : 
-                     type === 'sftp' ? 'Remote Path' : 
-                     type === 'dropbox' ? 'Dropbox Path' : 'Google Drive Path'}
-                  </label>
-                  <div className="flex">
-                    <input
-                      type="text"
-                      id="path"
-                      value={config.path || ''}
-                      onChange={(e) => setConfig({ ...config, path: e.target.value })}
-                      className="input-field flex-grow rounded-r-none"
-                      placeholder={type === 'local' ? '/path/to/backup' : 
-                                  type === 'sftp' ? '/home/user/backups' : 
-                                  type === 'dropbox' ? '/backups' : '/backups'}
-                      required
-                    />
-                    {type === 'local' && (
-                      <button
-                        type="button"
-                        onClick={() => setShowFileExplorer(true)}
-                        className="btn-secondary rounded-l-none border-l-0"
-                      >
-                        Browse
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* SFTP Configuration */}
-                {type === 'sftp' && (
-                  <>
-                    <div>
-                      <label htmlFor="host" className="form-label mb-1">
-                        Host
-                      </label>
-                      <input
-                        type="text"
-                        id="host"
-                        value={config.host || ''}
-                        onChange={(e) => setConfig({ ...config, host: e.target.value })}
-                        className="input-field"
-                        placeholder="sftp.example.com"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="port" className="form-label mb-1">
-                        Port
-                      </label>
-                      <input
-                        type="number"
-                        id="port"
-                        value={config.port || 22}
-                        onChange={(e) => setConfig({ ...config, port: parseInt(e.target.value) })}
-                        className="input-field"
-                        placeholder="22"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="username" className="form-label mb-1">
-                        Username
-                      </label>
-                      <input
-                        type="text"
-                        id="username"
-                        value={config.username || ''}
-                        onChange={(e) => setConfig({ ...config, username: e.target.value })}
-                        className="input-field"
-                        placeholder="username"
-                        required
-                      />
-                    </div>
-                    
-                    <div>
-                      <label htmlFor="password" className="form-label mb-1">
-                        Password
-                      </label>
-                      <input
-                        type="password"
-                        id="password"
-                        value={config.password || ''}
-                        onChange={(e) => setConfig({ ...config, password: e.target.value })}
-                        className="input-field"
-                        placeholder="••••••••"
-                        required
-                      />
-                    </div>
-                  </>
                 )}
 
                 {/* OAuth Connect Button */}
@@ -497,12 +534,6 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                 )}
               </div>
 
-              {error && (
-                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md text-red-800 dark:text-red-300 text-sm">
-                  {error}
-                </div>
-              )}
-
               <div className="flex justify-end space-x-3 pt-4 border-t border-gray-200 dark:border-gray-700">
                 <button
                   type="button"
@@ -524,48 +555,6 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
           </Dialog.Panel>
         </div>
       </Dialog>
-
-      {/* File Explorer Modal */}
-      {showFileExplorer && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex min-h-full items-end justify-center p-4 text-center sm:items-center sm:p-0">
-            <div className="fixed inset-0 bg-black/30 dark:bg-black/70" onClick={() => setShowFileExplorer(false)} />
-            <div className="relative transform overflow-hidden rounded-lg bg-white dark:bg-gray-800 text-left shadow-xl transition-all sm:my-8 sm:w-full sm:max-w-3xl">
-              <div className="px-4 py-3 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-                <h3 className="text-lg font-medium text-gray-900 dark:text-white">
-                  Select Directory
-                </h3>
-                <button
-                  type="button"
-                  className="text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-                  onClick={() => setShowFileExplorer(false)}
-                >
-                  <XMarkIcon className="h-6 w-6" aria-hidden="true" />
-                </button>
-              </div>
-              <div className="p-4">
-                <FileExplorer
-                  onSelect={(path) => {
-                    handlePathSelect(path);
-                    setShowFileExplorer(false);
-                  }}
-                  initialPath="/"
-                  showFiles={false}
-                />
-              </div>
-              <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 flex justify-end">
-                <button
-                  type="button"
-                  className="btn-secondary"
-                  onClick={() => setShowFileExplorer(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </>
   );
 } 

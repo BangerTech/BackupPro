@@ -437,7 +437,7 @@ export default function TargetList() {
                         <FileExplorer 
                           onSelect={handlePathSelect}
                           initialPath="/"
-                          showFiles={false}
+                          showFiles={true}
                         />
                       </div>
                     )}

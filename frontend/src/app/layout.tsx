@@ -7,7 +7,7 @@ import Layout from '@/components/Layout';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'Backup Scheduler',
+  title: 'BackupPro',
   description: 'Modern backup management system',
 };
 

@@ -7,6 +7,23 @@ import { api } from '../lib/api';
 import FileExplorer from './FileExplorer';
 import { useRouter } from 'next/navigation';
 
+// Event emitter für Kommunikation zwischen Komponenten
+export const backupEvents = {
+  // Callback-Funktionen für Backup-Ereignisse
+  onBackupCreated: new Set<() => void>(),
+  
+  // Methode zum Hinzufügen eines Listeners
+  addBackupCreatedListener: (callback: () => void) => {
+    backupEvents.onBackupCreated.add(callback);
+    return () => backupEvents.onBackupCreated.delete(callback);
+  },
+  
+  // Methode zum Auslösen des Events
+  emitBackupCreated: () => {
+    backupEvents.onBackupCreated.forEach(callback => callback());
+  }
+};
+
 interface Target {
   id: string;
   name: string;
@@ -75,8 +92,11 @@ export default function CreateBackupButton() {
       setSourcePath('');
       setTargetId('');
       
-      // Redirect to dashboard page to see the new backup
-      router.push('/');
+      // Benachrichtige andere Komponenten über das neue Backup
+      backupEvents.emitBackupCreated();
+      
+      // Zeige eine Erfolgsmeldung (optional)
+      // toast.success('Backup started successfully');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create backup');
     } finally {
@@ -155,7 +175,7 @@ export default function CreateBackupButton() {
                       <FileExplorer 
                         onSelect={handlePathSelect}
                         initialPath="/"
-                        showFiles={false}
+                        showFiles={true}
                       />
                     </div>
                   )}

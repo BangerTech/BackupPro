@@ -43,6 +43,8 @@ export default function DashboardStats() {
   };
 
   const formatStorage = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
@@ -52,7 +54,14 @@ export default function DashboardStats() {
       unitIndex++;
     }
 
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
+    // Für kleine Werte (B, KB) keine Dezimalstellen
+    if (unitIndex <= 1) {
+      return `${Math.round(size)} ${units[unitIndex]}`;
+    }
+    
+    // Für MB und größer immer eine Dezimalstelle anzeigen
+    // Wir verwenden toFixed(1) um genau eine Dezimalstelle anzuzeigen
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
   if (loading) {

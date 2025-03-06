@@ -372,7 +372,7 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
               </Dialog.Title>
               
               <div className="mb-6">
-                <FileExplorer onSelect={handleFileSelect} showFiles={false} />
+                <FileExplorer onSelect={handleFileSelect} showFiles={true} />
               </div>
               
               <div className="flex justify-end">

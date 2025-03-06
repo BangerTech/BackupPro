@@ -5,12 +5,12 @@ import { useTheme } from 'next-themes';
 import { 
   Squares2X2Icon, 
   ClockIcon, 
-  FolderIcon,
-  SunIcon,
-  MoonIcon
+  FolderIcon
 } from '@heroicons/react/24/outline';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import Image from 'next/image';
+import Head from 'next/head';
 
 interface NavItem {
   name: string;
@@ -28,43 +28,68 @@ export default function Layout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+  const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
     setMounted(true);
+    
+    // Aktualisiere die Zeit jede Sekunde
+    const updateTime = () => {
+      const now = new Date();
+      setCurrentTime(now.toLocaleTimeString());
+    };
+    
+    // Initialisiere die Zeit sofort
+    updateTime();
+    
+    // Setze ein Intervall, um die Zeit jede Sekunde zu aktualisieren
+    const interval = setInterval(updateTime, 1000);
+    
+    // Bereinige das Intervall beim Unmount der Komponente
+    return () => clearInterval(interval);
   }, []);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      <Head>
+        <title>BackupPro</title>
+      </Head>
+      
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
           <div className="flex items-center">
-            {/* Logo */}
-            <div className="flex-shrink-0">
-              <div className="h-8 w-8 bg-primary-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold">BS</span>
-              </div>
+            {/* Logo - jetzt klickbar für Theme Toggle */}
+            <div className="flex-shrink-0 cursor-pointer" onClick={toggleTheme}>
+              {mounted && (
+                <div className="h-10">
+                  {theme === 'dark' ? (
+                    <img 
+                      src="/BackupPro-white.png" 
+                      alt="BackupPro Logo" 
+                      className="h-10 w-auto"
+                    />
+                  ) : (
+                    <img 
+                      src="/BackupPro.png" 
+                      alt="BackupPro Logo" 
+                      className="h-10 w-auto"
+                    />
+                  )}
+                </div>
+              )}
             </div>
-            <div className="ml-4">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Backup Scheduler
-              </h1>
-            </div>
+            {/* Titel entfernt */}
           </div>
 
-          {/* Theme Switcher */}
-          <button
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
-            className="p-2 rounded-lg bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
-          >
-            {mounted && (
-              theme === 'dark' ? (
-                <SunIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              ) : (
-                <MoonIcon className="h-5 w-5 text-gray-600 dark:text-gray-300" />
-              )
-            )}
-          </button>
+          {/* Aktuelle Systemzeit */}
+          <div className="text-gray-700 dark:text-gray-300 font-medium">
+            {mounted && currentTime}
+          </div>
         </div>
       </header>
 

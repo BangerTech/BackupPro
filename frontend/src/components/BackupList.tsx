@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { format } from 'date-fns';
 import { CheckCircleIcon, XCircleIcon, ClockIcon } from '@heroicons/react/24/solid';
 import { api } from '../lib/api';
+import { backupEvents } from './CreateBackupButton';
 
 interface Backup {
   id: string;
@@ -18,10 +19,61 @@ export default function BackupList() {
   const [backups, setBackups] = useState<Backup[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
+    // Fetch backups immediately when component mounts
     fetchBackups();
+
+    // Set up polling interval
+    startPolling();
+
+    // Listen for backup created events
+    const removeListener = backupEvents.addBackupCreatedListener(() => {
+      // When a new backup is created, fetch the updated list immediately
+      fetchBackups();
+      // And start polling more frequently
+      startPolling();
+    });
+
+    // Clean up interval and event listener when component unmounts
+    return () => {
+      stopPolling();
+      removeListener();
+    };
   }, []);
+
+  const startPolling = () => {
+    // Poll every 5 seconds if there are in-progress backups, otherwise every 30 seconds
+    const pollInterval = hasInProgressBackups() ? 5000 : 30000;
+    
+    // Clear any existing interval
+    stopPolling();
+    
+    // Set new interval
+    pollingIntervalRef.current = setInterval(() => {
+      fetchBackups();
+    }, pollInterval);
+  };
+
+  const stopPolling = () => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  };
+
+  const hasInProgressBackups = () => {
+    return backups.some(backup => backup.status === 'pending' || backup.status === 'in_progress');
+  };
+
+  // Update polling interval when backups change
+  useEffect(() => {
+    // If we have in-progress backups, poll more frequently
+    if (hasInProgressBackups()) {
+      startPolling();
+    }
+  }, [backups]);
 
   const fetchBackups = async () => {
     try {
@@ -36,6 +88,8 @@ export default function BackupList() {
   };
 
   const formatSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    
     const units = ['B', 'KB', 'MB', 'GB', 'TB'];
     let size = bytes;
     let unitIndex = 0;
@@ -45,7 +99,14 @@ export default function BackupList() {
       unitIndex++;
     }
 
-    return `${size.toFixed(2)} ${units[unitIndex]}`;
+    // Für kleine Werte (B, KB) keine Dezimalstellen
+    if (unitIndex <= 1) {
+      return `${Math.round(size)} ${units[unitIndex]}`;
+    }
+    
+    // Für MB und größer immer eine Dezimalstelle anzeigen
+    // Wir verwenden toFixed(1) um genau eine Dezimalstelle anzuzeigen
+    return `${size.toFixed(1)} ${units[unitIndex]}`;
   };
 
   const getStatusIcon = (status: Backup['status']) => {
