@@ -6,13 +6,11 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - "${FRONTEND_PORT:-3000}:3000"
     environment:
-      - NODE_ENV=production
-      - NEXT_PUBLIC_API_URL=http://192.168.2.86:4000
-      - NEXT_PUBLIC_DROPBOX_CLIENT_ID=${DROPBOX_CLIENT_ID}
-      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - TZ=Europe/Berlin
+      - NODE_ENV=${NODE_ENV:-production}
+      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-localhost}:${BACKEND_PORT:-4000}
+      - TZ=${TZ:-Europe/Berlin}
     depends_on:
       backend:
         condition: service_healthy
@@ -25,21 +23,17 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     ports:
-      - "4000:4000"
+      - "${BACKEND_PORT:-4000}:4000"
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - PORT=4000
       - POSTGRES_HOST=postgres
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=backup_schedule
-      - FILE_EXPLORER_BASE_DIR=/host_fs
-      - DROPBOX_CLIENT_ID=${DROPBOX_CLIENT_ID}
-      - DROPBOX_CLIENT_SECRET=${DROPBOX_CLIENT_SECRET}
-      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
-      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
-      - TZ=Europe/Berlin
+      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-backup_schedule}
+      - FILE_EXPLORER_BASE_DIR=${FILE_EXPLORER_BASE_DIR:-/host_fs}
+      - TZ=${TZ:-Europe/Berlin}
     volumes:
       - /:/host_fs:ro
     depends_on:
@@ -58,19 +52,18 @@ services:
   postgres:
     image: postgres:16
     environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=backup_schedule
-      - TZ=Europe/Berlin
-      - PGTZ=Europe/Berlin
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-postgres}
+      - POSTGRES_DB=${POSTGRES_DB:-backup_schedule}
+      - TZ=${TZ:-Europe/Berlin}
+      - PGTZ=${TZ:-Europe/Berlin}
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./postgres-custom.conf:/etc/postgresql/postgresql.conf
-    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    command: postgres -c timezone='${TZ:-Europe/Berlin}' -c log_timezone='${TZ:-Europe/Berlin}'
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 5

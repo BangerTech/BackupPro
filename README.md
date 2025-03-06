@@ -32,12 +32,18 @@ Eine moderne Backup-Scheduling-Anwendung mit Unterstützung für verschiedene Ba
    cd BackupPro
    ```
 
-2. Docker-Container starten:
+2. Konfiguration anpassen:
+   ```bash
+   cp .env.example .env
+   # Bearbeiten Sie die .env-Datei und passen Sie die Werte an Ihre Umgebung an
+   ```
+
+3. Docker-Container starten:
    ```bash
    docker-compose up -d
    ```
 
-3. Die Anwendung ist nun unter http://localhost:3000 verfügbar.
+4. Die Anwendung ist nun unter http://localhost:3000 verfügbar.
 
 ### Entwicklungsumgebung
 
@@ -71,26 +77,56 @@ Eine moderne Backup-Scheduling-Anwendung mit Unterstützung für verschiedene Ba
 
 ## Konfiguration
 
-Die Anwendung kann über Umgebungsvariablen konfiguriert werden. Erstellen Sie eine `.env`-Datei im Hauptverzeichnis des Projekts:
+Die Anwendung kann über Umgebungsvariablen in der `.env`-Datei konfiguriert werden. Eine Beispielkonfiguration:
 
 ```
-# Datenbank
+# Timezone settings
+# Set your desired timezone here
+TZ=Europe/Berlin
+
+# Network settings
+# Set your local IP address or hostname here
+HOST_IP=192.168.2.86
+# Ports for the different services
+FRONTEND_PORT=3000
+BACKEND_PORT=4000
+POSTGRES_PORT=5432
+
+# Database settings
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=postgres
 POSTGRES_DB=backup_schedule
-POSTGRES_HOST=db
-POSTGRES_PORT=5432
 
-# Backend
-PORT=4000
+# Application settings
 NODE_ENV=production
-
-# OAuth (für Cloud-Speicher)
-DROPBOX_CLIENT_ID=your_dropbox_client_id
-DROPBOX_CLIENT_SECRET=your_dropbox_client_secret
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+FILE_EXPLORER_BASE_DIR=/host_fs
 ```
+
+### OAuth-Konfiguration für Cloud-Dienste
+
+Die OAuth-Konfiguration für Cloud-Dienste wie Dropbox und Google Drive erfolgt direkt beim Anlegen eines Targets in der Web-UI:
+
+1. Navigieren Sie zu "Targets" und klicken Sie auf "Neues Target erstellen"
+2. Wählen Sie den Target-Typ (z.B. Dropbox oder Google Drive)
+3. Geben Sie die erforderlichen OAuth-Anmeldeinformationen (Client ID und Secret) ein
+4. Diese Daten werden in der Datenbank gespeichert und für alle Operationen mit diesem Target verwendet
+
+Es ist nicht notwendig, OAuth-Anmeldeinformationen in der `.env`-Datei zu konfigurieren.
+
+### Zeitzoneneinstellung
+
+Die Zeitzone kann über die `TZ`-Umgebungsvariable konfiguriert werden. Diese Einstellung wird für alle Komponenten (Frontend, Backend und PostgreSQL) verwendet.
+
+Beispiele für gültige Zeitzonen:
+- `Europe/Berlin` (Deutschland)
+- `Europe/Vienna` (Österreich)
+- `Europe/Zurich` (Schweiz)
+- `Europe/London` (Großbritannien)
+- `America/New_York` (USA Ostküste)
+- `America/Los_Angeles` (USA Westküste)
+- `Asia/Tokyo` (Japan)
+
+Eine vollständige Liste der Zeitzonen finden Sie [hier](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones).
 
 ## Lizenz
 
