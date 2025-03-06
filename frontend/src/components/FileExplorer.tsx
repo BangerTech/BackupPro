@@ -97,11 +97,17 @@ export default function FileExplorer({
   const navigateToDirectory = (path: string) => {
     // Normalize the path
     const normalizedPath = normalizePath(path);
+    
+    // Set loading state before navigation
+    setLoading(true);
+    
     // Add to history
     const newHistory = [...pathHistory.slice(0, historyIndex + 1), normalizedPath];
     setPathHistory(newHistory);
     setHistoryIndex(newHistory.length - 1);
     setCurrentPath(normalizedPath);
+    
+    // fetchDirectory will be called by the useEffect that depends on currentPath
   };
 
   const navigateBack = () => {
@@ -128,6 +134,7 @@ export default function FileExplorer({
   };
 
   const handleSelectCurrentDirectory = () => {
+    console.log("Selecting current directory:", currentPath); // Debug-Ausgabe
     setSelectedPath(currentPath);
     onSelect(currentPath);
   };
@@ -165,8 +172,82 @@ export default function FileExplorer({
 
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-40 w-full">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="border dark:border-gray-700 rounded-lg overflow-hidden shadow-sm">
+        {/* Navigation Bar - Keep it visible during loading */}
+        <div className="bg-gray-100 dark:bg-gray-800 p-2 flex items-center space-x-2 border-b dark:border-gray-700">
+          <div className="flex space-x-1">
+            <button
+              onClick={navigateBack}
+              disabled={historyIndex <= 0}
+              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              title="Back"
+            >
+              <ChevronLeftIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={navigateForward}
+              disabled={historyIndex >= pathHistory.length - 1}
+              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 transition-colors"
+              title="Forward"
+            >
+              <ChevronRightIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => navigateToDirectory('/')}
+              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title="Home"
+            >
+              <HomeIcon className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => navigateToDirectory(getParentDirectory(currentPath))}
+              className="p-1.5 rounded hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+              title="Parent Directory"
+            >
+              <ArrowUpIcon className="h-4 w-4" />
+            </button>
+          </div>
+          
+          {/* Breadcrumbs */}
+          <div className="flex-1 flex items-center overflow-x-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 py-1">
+            <nav className="flex" aria-label="Breadcrumb">
+              <ol className="inline-flex items-center space-x-1 md:space-x-2">
+                {breadcrumbs.map((crumb, index) => (
+                  <li key={crumb.path} className="inline-flex items-center">
+                    {index > 0 && (
+                      <span className="mx-1 text-gray-400 dark:text-gray-600">/</span>
+                    )}
+                    <button
+                      onClick={() => navigateToDirectory(crumb.path)}
+                      className={`inline-flex items-center text-xs hover:text-primary-600 dark:hover:text-primary-400 ${
+                        index === breadcrumbs.length - 1 
+                          ? 'font-medium text-primary-600 dark:text-primary-400' 
+                          : 'text-gray-600 dark:text-gray-400'
+                      }`}
+                    >
+                      {index === 0 && <HomeIcon className="h-3 w-3 mr-1" />}
+                      {crumb.name}
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </nav>
+          </div>
+          
+          <button
+            onClick={handleSelectCurrentDirectory}
+            className="px-3 py-1.5 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 transition-colors flex items-center"
+            type="button"
+          >
+            <CheckCircleIcon className="h-4 w-4 mr-1" />
+            Select This Directory
+          </button>
+        </div>
+
+        {/* Loading indicator */}
+        <div className="bg-white dark:bg-gray-900 h-96 flex justify-center items-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 opacity-75"></div>
+        </div>
       </div>
     );
   }
@@ -259,6 +340,7 @@ export default function FileExplorer({
         <button
           onClick={handleSelectCurrentDirectory}
           className="px-3 py-1.5 bg-primary-600 text-white rounded text-sm hover:bg-primary-700 transition-colors flex items-center"
+          type="button"
         >
           <CheckCircleIcon className="h-4 w-4 mr-1" />
           Select This Directory

@@ -12,18 +12,31 @@ interface Target {
   type: 'local' | 'sftp' | 'dropbox' | 'google_drive';
 }
 
-interface CreateScheduleButtonProps {
-  onScheduleCreated?: () => void;
+interface Schedule {
+  id: string;
+  name: string;
+  sourcePath: string;
+  targetId?: string;
+  target?: Target;
+  daysOfWeek: number[];
+  timeOfDay: string;
+  isActive: boolean;
 }
 
-export default function CreateScheduleButton({ onScheduleCreated }: CreateScheduleButtonProps) {
+interface EditScheduleButtonProps {
+  schedule: Schedule;
+  onScheduleUpdated?: () => void;
+}
+
+export default function EditScheduleButton({ schedule, onScheduleUpdated }: EditScheduleButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [sourcePath, setSourcePath] = useState('');
-  const [targetId, setTargetId] = useState('');
+  const [name, setName] = useState(schedule.name);
+  const [sourcePath, setSourcePath] = useState(schedule.sourcePath);
+  const [targetId, setTargetId] = useState(schedule.targetId || (schedule.target?.id || ''));
   const [showFileExplorer, setShowFileExplorer] = useState(false);
-  const [daysOfWeek, setDaysOfWeek] = useState<number[]>([1, 2, 3, 4, 5]); // Default to weekdays
-  const [timeOfDay, setTimeOfDay] = useState('03:00'); // Default to 3 AM
+  const [daysOfWeek, setDaysOfWeek] = useState<number[]>(schedule.daysOfWeek);
+  const [timeOfDay, setTimeOfDay] = useState(schedule.timeOfDay);
+  const [isActive, setIsActive] = useState(schedule.isActive);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [targets, setTargets] = useState<Target[]>([]);
@@ -44,6 +57,16 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
       fetchTargets();
     }
   }, [isOpen]);
+
+  // Reset form values when schedule prop changes
+  useEffect(() => {
+    setName(schedule.name);
+    setSourcePath(schedule.sourcePath);
+    setTargetId(schedule.targetId || (schedule.target?.id || ''));
+    setDaysOfWeek(schedule.daysOfWeek);
+    setTimeOfDay(schedule.timeOfDay);
+    setIsActive(schedule.isActive);
+  }, [schedule]);
 
   const fetchTargets = async () => {
     try {
@@ -75,35 +98,25 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
     setError(null);
     
     try {
-      await api.post('/schedules', {
+      await api.put(`/schedules/${schedule.id}`, {
         name,
         sourcePath,
         targetId,
         daysOfWeek,
         timeOfDay,
-        isActive: true,
+        isActive,
       });
       
       setIsOpen(false);
-      resetForm();
       
-      if (onScheduleCreated) {
-        onScheduleCreated();
+      if (onScheduleUpdated) {
+        onScheduleUpdated();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create schedule');
+      setError(err instanceof Error ? err.message : 'Failed to update schedule');
     } finally {
       setLoading(false);
     }
-  };
-
-  const resetForm = () => {
-    setName('');
-    setSourcePath('');
-    setTargetId('');
-    setDaysOfWeek([1, 2, 3, 4, 5]);
-    setTimeOfDay('03:00');
-    setError(null);
   };
 
   const handleDayToggle = (day: number) => {
@@ -127,7 +140,6 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
   };
 
   const handleFileSelect = (path: string) => {
-    console.log("Selected path:", path); // Debug-Ausgabe
     setSourcePath(path);
     setShowFileExplorer(false);
   };
@@ -147,18 +159,17 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
     }
   };
 
-  const navigateToTargetsPage = () => {
-    window.location.href = '/targets';
-  };
-
   return (
     <>
       <button
         type="button"
         onClick={() => setIsOpen(true)}
-        className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900"
+        className="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
       >
-        Create Schedule
+        <span className="sr-only">Edit Schedule</span>
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5">
+          <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+        </svg>
       </button>
 
       <Dialog
@@ -171,7 +182,7 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
         <div className="fixed inset-0 flex items-center justify-center p-4">
           <Dialog.Panel className="mx-auto max-w-2xl w-full rounded-lg bg-white dark:bg-gray-800 p-6 shadow-xl">
             <Dialog.Title className="text-lg font-medium text-gray-900 dark:text-white mb-4">
-              Create Backup Schedule
+              Edit Backup Schedule
             </Dialog.Title>
             
             {error && (
@@ -254,32 +265,47 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
                       className="mt-1 block w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm"
                       required
                     >
-                      <option value="">Select a backup target</option>
+                      <option value="">Select a target</option>
                       {targets.map((target) => (
                         <option key={target.id} value={target.id}>
-                          {getTargetTypeIcon(target.type)} {target.name} ({target.type})
+                          {getTargetTypeIcon(target.type)} {target.name}
                         </option>
                       ))}
                     </select>
                   ) : (
-                    <div className="mt-1 rounded-md bg-yellow-50 dark:bg-yellow-900/20 p-3 border border-yellow-200 dark:border-yellow-800">
-                      <div className="flex">
-                        <ExclamationCircleIcon className="h-5 w-5 text-yellow-400 dark:text-yellow-500 mr-2 flex-shrink-0" />
-                        <div>
-                          <p className="text-sm text-yellow-700 dark:text-yellow-300">
-                            No backup targets available. You need to create at least one target before creating a schedule.
-                          </p>
-                          <button
-                            type="button"
-                            onClick={navigateToTargetsPage}
-                            className="mt-2 inline-flex items-center px-3 py-1.5 text-xs font-medium rounded-md text-yellow-700 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/40 hover:bg-yellow-200 dark:hover:bg-yellow-800/60"
-                          >
-                            Go to Targets Page
-                          </button>
-                        </div>
+                    <div className="mt-1 flex flex-col">
+                      <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+                        No backup targets available. Please create a target first.
                       </div>
+                      <button
+                        type="button"
+                        onClick={() => window.location.href = '/targets'}
+                        className="inline-flex items-center px-3 py-2 border border-gray-300 dark:border-gray-600 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 hover:bg-gray-50 dark:hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900"
+                      >
+                        <ServerIcon className="-ml-0.5 mr-2 h-4 w-4" />
+                        Manage Targets
+                      </button>
                     </div>
                   )}
+                </div>
+                
+                {/* Active Status */}
+                <div>
+                  <div className="flex items-center">
+                    <input
+                      id="isActive"
+                      type="checkbox"
+                      checked={isActive}
+                      onChange={(e) => setIsActive(e.target.checked)}
+                      className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 dark:border-gray-600 dark:bg-gray-700 rounded"
+                    />
+                    <label htmlFor="isActive" className="ml-2 block text-sm text-gray-700 dark:text-gray-300">
+                      Active
+                    </label>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                    When active, this schedule will automatically run backups at the specified time.
+                  </p>
                 </div>
                 
                 {/* Days of Week */}
@@ -359,7 +385,7 @@ export default function CreateScheduleButton({ onScheduleCreated }: CreateSchedu
                   disabled={loading || targets.length === 0}
                   className="inline-flex justify-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-primary-600 hover:bg-primary-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500 dark:focus:ring-offset-gray-900 disabled:opacity-50"
                 >
-                  {loading ? 'Creating...' : 'Create'}
+                  {loading ? 'Saving...' : 'Save Changes'}
                 </button>
               </div>
             </form>

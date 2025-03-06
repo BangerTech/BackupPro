@@ -47,7 +47,11 @@ export class BackupService {
   }
 
   async createBackup(scheduleId: string): Promise<Backup> {
-    const schedule = await this.scheduleRepo.findOne({ where: { id: scheduleId } });
+    const schedule = await this.scheduleRepo.findOne({ 
+      where: { id: scheduleId },
+      relations: ['target']
+    });
+    
     if (!schedule) {
       throw new Error('Schedule not found');
     }
@@ -56,7 +60,8 @@ export class BackupService {
       sourcePath: schedule.sourcePath,
       status: 'pending',
       size: 0,
-      schedule
+      schedule,
+      target: schedule.target
     });
 
     await this.backupRepository.save(backup);
@@ -109,7 +114,7 @@ export class BackupService {
         backup.size = 0; // Vorläufig auf 0 setzen
       } else {
         // Für Dateien verwenden wir die direkte Dateigröße
-        backup.size = stats.size;
+      backup.size = stats.size;
       }
 
       // Lade die Target-Relation, falls sie noch nicht geladen ist
@@ -129,7 +134,7 @@ export class BackupService {
       } else {
         const foundTarget = await this.targetRepo.findOne({ where: { id: backup.target.id } });
         if (!foundTarget) {
-          throw new Error('Target not found');
+        throw new Error('Target not found');
         }
         target = foundTarget;
       }

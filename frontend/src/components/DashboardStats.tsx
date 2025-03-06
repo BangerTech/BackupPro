@@ -32,11 +32,15 @@ interface Schedule {
   id: string;
   name: string;
   sourcePath: string;
-  targetPath: string;
+  targetPath?: string;
   cronExpression: string;
-  enabled: boolean;
+  isActive: boolean;
+  daysOfWeek: number[];
+  timeOfDay: string;
   lastRun?: string;
   nextRun?: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface StorageInfo {
@@ -328,7 +332,19 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
     try {
       setLoading(true);
       const data = await api.get('/schedules');
-      setSchedules(data);
+      
+      // Ensure data is properly formatted
+      const formattedSchedules = data.map((schedule: any) => ({
+        ...schedule,
+        // Make sure we have the correct field names
+        isActive: schedule.isActive !== undefined ? schedule.isActive : (schedule.enabled !== undefined ? schedule.enabled : true),
+        // Ensure daysOfWeek is an array
+        daysOfWeek: Array.isArray(schedule.daysOfWeek) ? schedule.daysOfWeek : [],
+        // Ensure timeOfDay exists
+        timeOfDay: schedule.timeOfDay || '00:00'
+      }));
+      
+      setSchedules(formattedSchedules);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
@@ -351,7 +367,7 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
   
   const filteredSchedules = statusFilter === 'all' 
     ? schedules 
-    : schedules.filter((schedule: Schedule) => statusFilter === 'active' ? schedule.enabled : !schedule.enabled);
+    : schedules.filter((schedule: Schedule) => statusFilter === 'active' ? schedule.isActive : !schedule.isActive);
   
   // Helper function to generate calendar days
   const generateCalendarDays = () => {
@@ -387,14 +403,15 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
     for (let i = 1; i <= daysInMonth; i++) {
       const date = new Date(currentYear, currentMonth, i);
       const isToday = i === today.getDate();
+      const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 4 = Thursday, ...
       
-      // Find schedules for this day
+      // Find schedules for this day based on daysOfWeek
       const daySchedules = schedules.filter((schedule: Schedule) => {
-        if (!schedule.nextRun) return false;
-        const nextRun = new Date(schedule.nextRun);
-        return nextRun.getDate() === i && 
-               nextRun.getMonth() === currentMonth && 
-               nextRun.getFullYear() === currentYear;
+        // Only consider active schedules
+        if (!schedule.isActive) return false;
+        
+        // Check if this day of week is in the schedule's daysOfWeek array
+        return schedule.daysOfWeek.includes(dayOfWeek);
       });
       
       days.push({
@@ -409,11 +426,19 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const date = new Date(currentYear, currentMonth + 1, i);
+      const dayOfWeek = date.getDay();
+      
+      // Find schedules for next month days too
+      const daySchedules = schedules.filter((schedule: Schedule) => {
+        if (!schedule.isActive) return false;
+        return schedule.daysOfWeek.includes(dayOfWeek);
+      });
+      
       days.push({
         date,
         isCurrentMonth: false,
         isToday: false,
-        schedules: []
+        schedules: daySchedules
       });
     }
     
@@ -424,40 +449,40 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
   
   return (
     <div className="fixed inset-0 bg-gray-500 bg-opacity-75 dark:bg-gray-900 dark:bg-opacity-75 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="p-4 sm:p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
-          <h2 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white flex items-center">
-            <ClockIcon className="h-5 w-5 sm:h-6 sm:w-6 text-purple-600 dark:text-purple-300 mr-2" />
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[80vh] overflow-hidden flex flex-col">
+        <div className="p-3 sm:p-4 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
+          <h2 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <ClockIcon className="h-4 w-4 sm:h-5 sm:w-5 text-purple-600 dark:text-purple-300 mr-2" />
             Schedule Details
           </h2>
           <button 
             onClick={onClose}
             className="text-gray-400 hover:text-gray-500 dark:text-gray-300 dark:hover:text-gray-200"
           >
-            <XMarkIcon className="h-5 w-5 sm:h-6 sm:w-6" />
+            <XMarkIcon className="h-5 w-5" />
           </button>
         </div>
         
-        <div className="p-4 sm:p-6 overflow-y-auto">
+        <div className="p-3 sm:p-4 overflow-y-auto">
           {/* Summary Cards */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6">
-            <div className="bg-purple-50 dark:bg-purple-900/20 p-3 sm:p-4 rounded-lg">
-              <h3 className="text-xs sm:text-sm font-medium text-purple-800 dark:text-purple-300">Total Schedules</h3>
-              <p className="text-xl sm:text-2xl font-bold text-purple-900 dark:text-purple-200">{schedules.length}</p>
+          <div className="grid grid-cols-2 gap-2 mb-3">
+            <div className="bg-purple-50 dark:bg-purple-900/20 p-2 sm:p-3 rounded-lg">
+              <h3 className="text-xs font-medium text-purple-800 dark:text-purple-300">Total Schedules</h3>
+              <p className="text-lg sm:text-xl font-bold text-purple-900 dark:text-purple-200">{schedules.length}</p>
             </div>
-            <div className="bg-green-50 dark:bg-green-900/20 p-3 sm:p-4 rounded-lg">
-              <h3 className="text-xs sm:text-sm font-medium text-green-800 dark:text-green-300">Active Schedules</h3>
-              <p className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-200">
-                {schedules.filter(s => s.enabled).length}
+            <div className="bg-green-50 dark:bg-green-900/20 p-2 sm:p-3 rounded-lg">
+              <h3 className="text-xs font-medium text-green-800 dark:text-green-300">Active Schedules</h3>
+              <p className="text-lg sm:text-xl font-bold text-green-900 dark:text-green-200">
+                {schedules.filter(s => s.isActive).length}
               </p>
             </div>
           </div>
           
           {/* Filter Controls - Scrollable on mobile */}
-          <div className="flex overflow-x-auto pb-2 mb-4 -mx-4 px-4 sm:mx-0 sm:px-0 sm:flex-wrap sm:gap-2">
+          <div className="flex overflow-x-auto pb-2 mb-3 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap sm:gap-2">
             <button 
               onClick={() => setStatusFilter('all')}
-              className={`flex-shrink-0 mr-2 sm:mr-0 px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
+              className={`flex-shrink-0 mr-2 sm:mr-0 px-2 py-1 rounded-full text-xs font-medium ${
                 statusFilter === 'all' 
                   ? 'bg-gray-200 dark:bg-gray-600 text-gray-800 dark:text-white' 
                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300'
@@ -467,33 +492,33 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
             </button>
             <button 
               onClick={() => setStatusFilter('active')}
-              className={`flex-shrink-0 mr-2 sm:mr-0 px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
+              className={`flex-shrink-0 mr-2 sm:mr-0 px-2 py-1 rounded-full text-xs font-medium ${
                 statusFilter === 'active' 
                   ? 'bg-green-200 dark:bg-green-800 text-green-800 dark:text-green-200' 
                   : 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300'
               }`}
             >
-              Active ({schedules.filter(s => s.enabled).length})
+              Active ({schedules.filter(s => s.isActive).length})
             </button>
             <button 
               onClick={() => setStatusFilter('inactive')}
-              className={`flex-shrink-0 mr-2 sm:mr-0 px-3 py-1 rounded-full text-xs sm:text-sm font-medium ${
+              className={`flex-shrink-0 mr-2 sm:mr-0 px-2 py-1 rounded-full text-xs font-medium ${
                 statusFilter === 'inactive' 
                   ? 'bg-red-200 dark:bg-red-800 text-red-800 dark:text-red-200' 
                   : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300'
               }`}
             >
-              Inactive ({schedules.filter(s => !s.enabled).length})
+              Inactive ({schedules.filter(s => !s.isActive).length})
             </button>
           </div>
           
           {/* Calendar View */}
-          <div className="mb-6">
-            <h3 className="text-base font-medium text-gray-900 dark:text-white mb-3">Schedule Calendar</h3>
+          <div className="mb-4">
+            <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">Schedule Calendar</h3>
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow overflow-hidden">
               <div className="grid grid-cols-7 gap-px border-b border-gray-200 dark:border-gray-700 bg-gray-200 dark:bg-gray-700 text-center">
-                {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day) => (
-                  <div key={day} className="py-2 text-xs font-medium text-gray-700 dark:text-gray-300">
+                {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((day) => (
+                  <div key={day} className="py-1 text-xs font-medium text-gray-700 dark:text-gray-300">
                     {day}
                   </div>
                 ))}
@@ -520,7 +545,7 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
                       <div 
                         key={schedule.id}
                         className={`text-xs p-1 mb-1 rounded truncate ${
-                          schedule.enabled 
+                          schedule.isActive 
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                         }`}
@@ -586,23 +611,23 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
                       </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
                         <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          schedule.enabled 
+                          schedule.isActive 
                             ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300' 
                             : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300'
                         }`}>
-                          {schedule.enabled ? 'Active' : 'Inactive'}
+                          {schedule.isActive ? 'Active' : 'Inactive'}
                         </span>
                       </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
                         <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
-                          {schedule.cronExpression}
+                          {schedule.cronExpression || formatScheduleDays(schedule)}
                         </code>
                       </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
                         {formatDate(schedule.lastRun)}
                       </td>
                       <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                        {schedule.enabled ? formatDate(schedule.nextRun) : 'Disabled'}
+                        {schedule.isActive ? formatDate(schedule.nextRun) : 'Disabled'}
                       </td>
                     </tr>
                   ))}
@@ -1074,6 +1099,36 @@ function SuccessRateModal({ isOpen, onClose }: SuccessRateModalProps) {
     </div>
   );
 }
+
+// Helper function to format days of week
+const formatScheduleDays = (schedule: Schedule): string => {
+  if (!schedule.daysOfWeek || schedule.daysOfWeek.length === 0) {
+    return 'No days selected';
+  }
+  
+  const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  
+  if (schedule.daysOfWeek.length === 7) {
+    return `Every day at ${schedule.timeOfDay || 'scheduled time'}`;
+  }
+  
+  if (schedule.daysOfWeek.length === 5 && 
+      !schedule.daysOfWeek.includes(0) && 
+      !schedule.daysOfWeek.includes(6)) {
+    return `Weekdays at ${schedule.timeOfDay || 'scheduled time'}`;
+  }
+  
+  if (schedule.daysOfWeek.length === 2 && 
+      schedule.daysOfWeek.includes(0) && 
+      schedule.daysOfWeek.includes(6)) {
+    return `Weekends at ${schedule.timeOfDay || 'scheduled time'}`;
+  }
+  
+  // Sort the days of week for consistent display
+  const sortedDays = [...schedule.daysOfWeek].sort((a, b) => a - b);
+  const days = sortedDays.map(d => dayNames[d]).join(', ');
+  return `${days} at ${schedule.timeOfDay || 'scheduled time'}`;
+};
 
 export default function DashboardStats() {
   const [stats, setStats] = useState<Stats>({

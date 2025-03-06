@@ -5,6 +5,7 @@ import { format } from 'date-fns';
 import { Switch } from '@headlessui/react';
 import { PencilIcon, TrashIcon, CalendarIcon, ClockIcon, FolderIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { api } from '../lib/api';
+import EditScheduleButton from './EditScheduleButton';
 
 interface Schedule {
   id: string;
@@ -78,30 +79,73 @@ export default function ScheduleList() {
     return days.map(d => dayNames[d]).join(', ');
   };
 
+  const calculateNextRun = (schedule: Schedule): string => {
+    if (!schedule.isActive) return 'Schedule is inactive';
+    
+    try {
+      const now = new Date();
+      const [hours, minutes] = schedule.timeOfDay.split(':').map(Number);
+      
+      // Check if today is in the schedule's days of week
+      const currentDayOfWeek = now.getDay();
+      const isScheduledToday = schedule.daysOfWeek.includes(currentDayOfWeek);
+      
+      // Create a date object for the scheduled time today
+      let nextRun = new Date(now);
+      nextRun.setHours(hours, minutes, 0, 0);
+      
+      // If scheduled for today and the time hasn't passed yet, use today
+      if (isScheduledToday && nextRun > now) {
+        return nextRun.toLocaleDateString() + ' ' + nextRun.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      // Otherwise, find the next scheduled day
+      // Start from tomorrow
+      nextRun.setDate(nextRun.getDate() + 1);
+      const tomorrowDayOfWeek = nextRun.getDay();
+      
+      // Sort days of week to make the search easier
+      const sortedDays = [...schedule.daysOfWeek].sort((a, b) => a - b);
+      
+      // Find the next day that matches
+      const futureDays = sortedDays.filter(day => day >= tomorrowDayOfWeek);
+      let daysToAdd = 0;
+      
+      if (futureDays.length > 0) {
+        // There's a matching day later this week
+        daysToAdd = futureDays[0] - tomorrowDayOfWeek;
+      } else {
+        // Wrap around to the next week
+        daysToAdd = 7 - tomorrowDayOfWeek + sortedDays[0];
+      }
+      
+      nextRun.setDate(nextRun.getDate() + daysToAdd);
+      
+      return nextRun.toLocaleDateString() + ' ' + nextRun.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.error('Error calculating next run:', error);
+      return 'Unable to calculate';
+    }
+  };
+
   if (loading) {
     return (
-      <div className="flex justify-center items-center h-40">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600"></div>
+      <div className="flex justify-center items-center py-12">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="rounded-md bg-red-50 dark:bg-red-900/20 p-4 border border-red-200 dark:border-red-800">
+      <div className="rounded-xl bg-red-50 dark:bg-red-900/20 p-4 border border-red-100 dark:border-red-800">
         <div className="flex">
-          <ExclamationCircleIcon className="h-5 w-5 text-red-400 dark:text-red-500 mr-2" />
-          <div>
+          <div className="flex-shrink-0">
+            <ExclamationCircleIcon className="h-5 w-5 text-red-400" aria-hidden="true" />
+          </div>
+          <div className="ml-3">
             <h3 className="text-sm font-medium text-red-800 dark:text-red-300">Error</h3>
-            <div className="mt-2 text-sm text-red-700 dark:text-red-400">{error}</div>
-            <div className="mt-3">
-              <button
-                onClick={fetchSchedules}
-                className="px-3 py-1.5 text-xs font-medium text-red-700 dark:text-red-300 bg-red-100 dark:bg-red-900/40 rounded-md hover:bg-red-200 dark:hover:bg-red-800/60"
-              >
-                Try Again
-              </button>
-            </div>
+            <div className="mt-2 text-sm text-red-700 dark:text-red-200">{error}</div>
           </div>
         </div>
       </div>
@@ -110,12 +154,8 @@ export default function ScheduleList() {
 
   if (schedules.length === 0) {
     return (
-      <div className="bg-white dark:bg-gray-800 shadow rounded-lg p-8 text-center">
-        <CalendarIcon className="h-12 w-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">No Backup Schedules</h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-          You haven't created any backup schedules yet. Create your first schedule to start automating your backups.
-        </p>
+      <div className="text-center py-12">
+        <p className="text-gray-500 dark:text-gray-400">No schedules found. Create your first backup schedule to get started.</p>
       </div>
     );
   }
@@ -156,17 +196,17 @@ export default function ScheduleList() {
             <div className="flex items-start">
               <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                {formatDaysOfWeek(schedule.daysOfWeek)}
+                {formatDaysOfWeek(schedule.daysOfWeek)} at {schedule.timeOfDay}
               </span>
             </div>
             <div className="flex items-start">
               <ClockIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
               <span className="text-sm text-gray-600 dark:text-gray-300">
-                {schedule.timeOfDay}
+                Next run: {calculateNextRun(schedule)}
               </span>
             </div>
             <div className="text-sm text-gray-500 dark:text-gray-400">
-              Created: {new Date(schedule.createdAt).toLocaleDateString()}
+              Created: {new Date(schedule.createdAt).toLocaleDateString()} {new Date(schedule.createdAt).toLocaleTimeString()}
             </div>
           </div>
           
@@ -195,13 +235,10 @@ export default function ScheduleList() {
               </>
             ) : (
               <>
-                <button
-                  type="button"
-                  className="p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300"
-                  onClick={() => {/* Implement edit */}}
-                >
-                  <PencilIcon className="h-5 w-5" />
-                </button>
+                <EditScheduleButton 
+                  schedule={schedule} 
+                  onScheduleUpdated={fetchSchedules} 
+                />
                 <button
                   type="button"
                   className="p-2 rounded-md text-gray-400 hover:text-red-500"

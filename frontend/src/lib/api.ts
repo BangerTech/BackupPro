@@ -82,6 +82,10 @@ export const api = {
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
+      // Check if the response is 204 No Content, return empty object instead of parsing JSON
+      if (response.status === 204) {
+        return {};
+      }
       return response.json();
     } catch (error) {
       console.error('API DELETE error:', error);
