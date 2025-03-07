@@ -11,7 +11,8 @@
   <img src="frontend/public/logo.png" alt="BackupPro Logo" width="400"/>
 </div>
 
-> 💾 A modern backup scheduling application with support for various backup targets including local directories, SFTP, Dropbox, and Google Drive
+
+> 💾 A modern backup scheduling application with support for various backup targets including local directories, SFTP, SMB, Dropbox, and Google Drive
 
 ## Screenshots
 
