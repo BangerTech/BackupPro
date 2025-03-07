@@ -16,7 +16,9 @@
 
 ## Usage
 
-<img width="100%" alt="screen" src="docs/images/screen.mov">
+<div align="center">
+   <img src="docs/images/screen.gif" alt="BackupPro Demo" width="100%">
+</div>
 
 ## Screenshots
 
