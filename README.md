@@ -16,7 +16,8 @@
 ## Screenshots
 
 <div align="center">
-  <img src="docs/images/dashboard.png" width="32%" />
+  <img src="docs/images/dashboard-dark.png" width="32%" />
+  <img src="docs/images/dashboard-light.png" width="32%" />
   <img src="docs/images/schedule-create.png" width="32%" />
   <img src="docs/images/targets-view.png" width="32%" />
 </div>
@@ -39,7 +40,7 @@ BackupPro is a comprehensive backup scheduling solution designed to simplify the
 ## Features
 
 - 📅 **Flexible Scheduling**: Create backup schedules with customizable days and times
-- 🎯 **Multiple Backup Targets**: Support for local directories, SFTP, Dropbox, and Google Drive
+- 🎯 **Multiple Backup Targets**: Support for local directories, SFTP, SMB, Dropbox, and Google Drive
 - 📊 **Dashboard Overview**: Monitor backup status, storage usage, and success rates at a glance
 - 🔔 **Status Notifications**: Get informed about backup successes and failures
 - 🔄 **Manual Backups**: Trigger immediate backups when needed
