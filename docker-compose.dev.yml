@@ -5,7 +5,9 @@ version: '3.8'
 
 services:
   frontend:
-    image: bangertech/backup-pro:frontend-latest
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
@@ -19,7 +21,9 @@ services:
     restart: unless-stopped
 
   backend:
-    image: bangertech/backup-pro:backend-latest
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     ports:
       - "${BACKEND_PORT:-4000}:4000"
     environment:

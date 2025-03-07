@@ -57,6 +57,9 @@ BackupPro is a comprehensive backup scheduling solution designed to simplify the
 
 - Docker and Docker Compose
 - Node.js (for development)
+- Supported platforms:
+  - x86/AMD64 (standard PCs and servers)
+  - ARM64 (Raspberry Pi 4 or newer with 64-bit OS)
 
 ### Quick Start with Docker
 
@@ -78,6 +81,66 @@ BackupPro is a comprehensive backup scheduling solution designed to simplify the
    ```
 
 4. Access the application at http://localhost:3000
+
+### Quick Start with Docker Hub Images
+
+You can also use pre-built Docker images from Docker Hub:
+
+1. Download the Docker Compose file:
+
+   ```bash
+   curl -O https://raw.githubusercontent.com/bangertech/backup-pro/master/docker-compose.yml
+   ```
+
+2. Create a `.env` file with your settings:
+
+   ```bash
+   cat > .env << 'EOL'
+   # Timezone settings
+   TZ=Europe/Berlin
+
+   # Ports for the different services
+   FRONTEND_PORT=3000
+   BACKEND_PORT=4000
+   POSTGRES_PORT=5432
+
+   # Database settings
+   POSTGRES_USER=postgres
+   POSTGRES_PASSWORD=postgres
+   POSTGRES_DB=backup_schedule
+
+   # Application settings
+   NODE_ENV=production
+   FILE_EXPLORER_BASE_DIR=/host_fs
+   EOL
+   ```
+
+3. Start the application:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Access the application at http://localhost:3000
+
+### Development with Docker
+
+For development purposes, you can use the development Docker Compose configuration:
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+This will build the images locally instead of using the pre-built ones from Docker Hub.
+
+### Updating Docker Hub Images
+
+To update to the latest version when using Docker Hub images:
+
+```bash
+docker compose pull
+docker compose up -d
+```
 
 ## Configuration
 
@@ -225,6 +288,22 @@ docker-compose logs postgres
    cd ../backend
    npm run dev
    ```
+
+### GitHub Actions for Docker Hub
+
+This project includes a GitHub Actions workflow that automatically builds and pushes Docker images to Docker Hub when changes are pushed to the master branch. To set up this workflow:
+
+1. Create a Docker Hub account and repository named `bangertech/backup-pro`
+2. In your GitHub repository, add the following secrets:
+   - `DOCKERHUB_USERNAME`: Your Docker Hub username
+   - `DOCKERHUB_TOKEN`: A Docker Hub access token with read/write permissions
+
+The workflow will:
+- Build multi-architecture images (AMD64 and ARM64)
+- Push them to Docker Hub with appropriate tags
+- Create a production-ready Docker Compose file
+
+You can also manually trigger the workflow from the Actions tab in your GitHub repository.
 
 ### Project Structure
 
