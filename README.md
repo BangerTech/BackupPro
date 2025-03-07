@@ -14,6 +14,10 @@
 
 > 💾 A modern backup scheduling application with support for various backup targets including local directories, SFTP, SMB, Dropbox, and Google Drive
 
+## Usage
+
+<img width="100%" alt="screen" src="docs/images/screen.mov">
+
 ## Screenshots
 
 <div align="center">
