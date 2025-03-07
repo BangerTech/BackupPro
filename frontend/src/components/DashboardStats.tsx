@@ -9,6 +9,22 @@ import {
   XMarkIcon,
   ArrowUpIcon,
   ArrowDownIcon,
+  CloudIcon,
+  GlobeAltIcon,
+  DocumentIcon,
+  ArchiveBoxIcon,
+  ShieldCheckIcon,
+  CpuChipIcon,
+  DevicePhoneMobileIcon,
+  HomeIcon,
+  ComputerDesktopIcon,
+  CameraIcon,
+  VideoCameraIcon,
+  MusicalNoteIcon,
+  PhotoIcon,
+  FilmIcon,
+  CodeBracketIcon,
+  FolderIcon,
 } from '@heroicons/react/24/outline';
 import { api } from '@/lib/api';
 
@@ -26,6 +42,16 @@ interface Backup {
   size: number;
   createdAt: string;
   errorMessage?: string;
+  target: Target;
+}
+
+interface Target {
+  id: string;
+  name: string;
+  type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
+  path: string;
+  icon: string;
+  emoji?: string;
 }
 
 interface Schedule {
@@ -41,6 +67,7 @@ interface Schedule {
   nextRun?: string;
   createdAt: string;
   updatedAt: string;
+  target: Target;
 }
 
 interface StorageInfo {
@@ -129,6 +156,25 @@ function BackupDetailModal({ isOpen, onClose }: BackupDetailModalProps) {
         return 'text-blue-600 dark:text-blue-300 bg-blue-100 dark:bg-blue-900/30 px-2 py-1 rounded-full text-xs font-medium';
       default:
         return 'text-yellow-600 dark:text-yellow-300 bg-yellow-100 dark:bg-yellow-900/30 px-2 py-1 rounded-full text-xs font-medium';
+    }
+  };
+  
+  const getTargetTypeIcon = (type: Target['type'], customEmoji?: string) => {
+    if (customEmoji) return customEmoji;
+    
+    switch (type) {
+      case 'local':
+        return '💻';
+      case 'sftp':
+        return '🔒';
+      case 'smb':
+        return '🔌';
+      case 'dropbox':
+        return '📦';
+      case 'google_drive':
+        return '📁';
+      default:
+        return '📄';
     }
   };
   
@@ -261,16 +307,19 @@ function BackupDetailModal({ isOpen, onClose }: BackupDetailModalProps) {
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                    <th scope="col" className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
                       Status
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                    <th scope="col" className="hidden sm:table-cell px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
                       Source
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                    <th scope="col" className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                      Target
+                    </th>
+                    <th scope="col" className="px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
                       Size
                     </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
+                    <th scope="col" className="hidden md:table-cell px-2 sm:px-4 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
                       Created
                     </th>
                   </tr>
@@ -281,18 +330,40 @@ function BackupDetailModal({ isOpen, onClose }: BackupDetailModalProps) {
                       key={backup.id} 
                       className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap">
                         <span className={getStatusClass(backup.status)}>
-                          {backup.status.replace('_', ' ')}
+                          {/* Show only first letter on mobile */}
+                          <span className="sm:hidden">
+                            {backup.status.charAt(0).toUpperCase()}
+                          </span>
+                          <span className="hidden sm:inline">
+                            {backup.status.replace('_', ' ')}
+                          </span>
                         </span>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                        <div className="max-w-[100px] sm:max-w-xs truncate">{backup.sourcePath}</div>
+                      <td className="hidden sm:table-cell px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+                        <div className="max-w-[100px] sm:max-w-xs truncate" title={backup.sourcePath}>
+                          {backup.sourcePath}
+                        </div>
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+                        {backup.target ? (
+                          <div className="flex items-center">
+                            <span className="mr-1" title={backup.target.type}>
+                              {getTargetTypeIcon(backup.target.type, backup.target.emoji)}
+                            </span>
+                            <span className="max-w-[80px] sm:max-w-[120px] truncate" title={backup.target.name}>
+                              {backup.target.name}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-gray-400 dark:text-gray-500">-</span>
+                        )}
+                      </td>
+                      <td className="px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
                         {formatSize(backup.size)}
                       </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
+                      <td className="hidden md:table-cell px-2 sm:px-4 py-2 sm:py-3 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
                         {formatDate(backup.createdAt)}
                       </td>
                     </tr>
@@ -321,10 +392,20 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [selectedSchedule, setSelectedSchedule] = useState<Schedule | null>(null);
+  const [showAllSchedules, setShowAllSchedules] = useState(false);
   
   useEffect(() => {
     if (isOpen) {
       fetchSchedules();
+    }
+  }, [isOpen]);
+  
+  // Reset selection when modal is closed
+  useEffect(() => {
+    if (!isOpen) {
+      setSelectedSchedule(null);
+      setShowAllSchedules(false);
     }
   }, [isOpen]);
   
@@ -353,21 +434,71 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
     }
   };
   
+  // Update the formatDate function to handle undefined values
   const formatDate = (dateString?: string): string => {
     if (!dateString) return 'Never';
     const date = new Date(dateString);
     return date.toLocaleString();
   };
   
-  const getNextRunTime = (cronExpression: string): string => {
-    // This is a placeholder. In a real app, you would use a library like cron-parser
-    // to calculate the next run time based on the cron expression.
-    return 'Next scheduled run time';
+  // Improve the calculation of the next run time
+  const calculateNextRun = (schedule: Schedule): string => {
+    if (!schedule.isActive) return 'Schedule is inactive';
+    
+    try {
+      const now = new Date();
+      const [hours, minutes] = schedule.timeOfDay.split(':').map(Number);
+      
+      // Check if today is in the schedule's days of week
+      const currentDayOfWeek = now.getDay();
+      const isScheduledToday = schedule.daysOfWeek.includes(currentDayOfWeek);
+      
+      // Create a date object for the scheduled time today
+      let nextRun = new Date(now);
+      nextRun.setHours(hours, minutes, 0, 0);
+      
+      // If scheduled for today and the time hasn't passed yet, use today
+      if (isScheduledToday && nextRun > now) {
+        return nextRun.toLocaleDateString() + ' ' + nextRun.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+      
+      // Otherwise, find the next scheduled day
+      // Start from tomorrow
+      nextRun.setDate(nextRun.getDate() + 1);
+      const tomorrowDayOfWeek = nextRun.getDay();
+      
+      // Sort days of week to make the search easier
+      const sortedDays = [...schedule.daysOfWeek].sort((a, b) => a - b);
+      
+      // Find the next day that matches
+      const futureDays = sortedDays.filter(day => day >= tomorrowDayOfWeek);
+      let daysToAdd = 0;
+      
+      if (futureDays.length > 0) {
+        // There's a matching day later this week
+        daysToAdd = futureDays[0] - tomorrowDayOfWeek;
+      } else {
+        // Wrap around to the next week
+        daysToAdd = 7 - tomorrowDayOfWeek + sortedDays[0];
+      }
+      
+      nextRun.setDate(nextRun.getDate() + daysToAdd);
+      
+      return nextRun.toLocaleDateString() + ' ' + nextRun.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (error) {
+      console.error('Error calculating next run:', error);
+      return 'Unable to calculate';
+    }
   };
   
   const filteredSchedules = statusFilter === 'all' 
     ? schedules 
     : schedules.filter((schedule: Schedule) => statusFilter === 'active' ? schedule.isActive : !schedule.isActive);
+  
+  // Determine which schedules to show in the table
+  const schedulesToShow = selectedSchedule 
+    ? [selectedSchedule] 
+    : (showAllSchedules ? filteredSchedules : []);
   
   // Helper function to generate calendar days
   const generateCalendarDays = () => {
@@ -445,6 +576,48 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
     return days;
   };
   
+  // Handle schedule click in calendar
+  const handleScheduleClick = (schedule: Schedule) => {
+    if (selectedSchedule && selectedSchedule.id === schedule.id) {
+      // If clicking the same schedule, deselect it
+      setSelectedSchedule(null);
+    } else {
+      // Otherwise, select the clicked schedule
+      setSelectedSchedule(schedule);
+      // When selecting a specific schedule, hide the "show all" view
+      setShowAllSchedules(false);
+    }
+  };
+  
+  // Toggle showing all schedules
+  const toggleShowAllSchedules = () => {
+    setShowAllSchedules(!showAllSchedules);
+    // When showing all, clear the selected schedule
+    if (!showAllSchedules) {
+      setSelectedSchedule(null);
+    }
+  };
+
+  // Helper function to get the icon component based on the icon name
+  const getTargetTypeIcon = (type: Target['type'], customEmoji?: string) => {
+    if (customEmoji) return customEmoji;
+    
+    switch (type) {
+      case 'local':
+        return '💻';
+      case 'sftp':
+        return '🔒';
+      case 'smb':
+        return '🔌';
+      case 'dropbox':
+        return '📦';
+      case 'google_drive':
+        return '📁';
+      default:
+        return '📄';
+    }
+  };
+  
   if (!isOpen) return null;
   
   return (
@@ -510,6 +683,19 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
             >
               Inactive ({schedules.filter(s => !s.isActive).length})
             </button>
+            
+            <div className="flex-grow"></div>
+            
+            <button 
+              onClick={toggleShowAllSchedules}
+              className={`flex-shrink-0 px-2 py-1 rounded-full text-xs font-medium ${
+                showAllSchedules 
+                  ? 'bg-blue-200 dark:bg-blue-800 text-blue-800 dark:text-blue-200' 
+                  : 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'
+              }`}
+            >
+              {showAllSchedules ? 'Hide Details' : 'Show All Details'}
+            </button>
           </div>
           
           {/* Calendar View */}
@@ -541,26 +727,32 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
                       )}
                     </div>
                     
-                    {day.schedules.map((schedule: Schedule) => (
-                      <div 
-                        key={schedule.id}
-                        className={`text-xs p-1 mb-1 rounded truncate ${
-                          schedule.isActive 
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                        }`}
-                        title={schedule.name}
-                      >
-                        {schedule.name}
-                      </div>
-                    ))}
+                    {day.schedules.map((schedule: Schedule) => {
+                      return (
+                        <div 
+                          key={schedule.id}
+                          onClick={() => handleScheduleClick(schedule)}
+                          className={`text-xs p-1 mb-1 rounded truncate cursor-pointer hover:opacity-80 transition-opacity ${
+                            schedule.isActive 
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200' 
+                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                          } ${selectedSchedule?.id === schedule.id ? 'ring-2 ring-primary-500 dark:ring-primary-400' : ''}`}
+                          title={`${schedule.name} at ${schedule.timeOfDay}`}
+                        >
+                          <div className="flex items-center">
+                            <span className="mr-1">{getTargetTypeIcon(schedule.target?.type || 'local', schedule.target?.emoji)}</span>
+                            <span className="truncate">{schedule.name}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 ))}
               </div>
             </div>
           </div>
           
-          {/* Schedule List */}
+          {/* Selected Schedule Info or Schedule List */}
           {loading ? (
             <div className="flex justify-center items-center py-12">
               <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary-600"></div>
@@ -574,65 +766,86 @@ function ScheduleDetailModal({ isOpen, onClose }: ScheduleDetailModalProps) {
                 </div>
               </div>
             </div>
-          ) : filteredSchedules.length === 0 ? (
+          ) : schedulesToShow.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400">No schedules found with the selected filter</p>
+              <p className="text-gray-500 dark:text-gray-400">
+                {selectedSchedule 
+                  ? 'No schedule selected' 
+                  : 'Click on a schedule in the calendar to view details, or click "Show All Details" to see all schedules'}
+              </p>
             </div>
           ) : (
-            <div className="overflow-x-auto -mx-4 sm:mx-0">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                <thead className="bg-gray-50 dark:bg-gray-700">
-                  <tr>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
-                      Name
-                    </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
-                      Schedule
-                    </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
-                      Last Run
-                    </th>
-                    <th scope="col" className="px-4 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-200 uppercase tracking-wider">
-                      Next Run
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {filteredSchedules.map((schedule) => (
-                    <tr 
-                      key={schedule.id} 
-                      className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200 font-medium">
-                        {schedule.name}
-                      </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          schedule.isActive 
-                            ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300' 
-                            : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300'
-                        }`}>
-                          {schedule.isActive ? 'Active' : 'Inactive'}
-                        </span>
-                      </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                        <code className="bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded text-xs">
-                          {schedule.cronExpression || formatScheduleDays(schedule)}
-                        </code>
-                      </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                        {formatDate(schedule.lastRun)}
-                      </td>
-                      <td className="px-4 sm:px-6 py-3 sm:py-4 whitespace-nowrap text-xs sm:text-sm text-gray-700 dark:text-gray-200">
-                        {schedule.isActive ? formatDate(schedule.nextRun) : 'Disabled'}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-2">
+                {selectedSchedule 
+                  ? `Details for "${selectedSchedule.name}"` 
+                  : 'All Schedules'}
+              </h3>
+              
+              {schedulesToShow.map((schedule) => (
+                <div 
+                  key={schedule.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden hover:shadow-md transition-shadow"
+                >
+                  {/* Schedule header with name and status */}
+                  <div className="px-4 py-3 bg-gray-50 dark:bg-gray-700 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center">
+                    <div className="flex items-center">
+                      <span className="mr-2">{getTargetTypeIcon(schedule.target?.type || 'local', schedule.target?.emoji)}</span>
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white">{schedule.name}</h4>
+                    </div>
+                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                      schedule.isActive 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-300' 
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-300'
+                    }`}>
+                      {schedule.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                  
+                  {/* Schedule details in a grid layout */}
+                  <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Next Run</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-200">
+                          {calculateNextRun(schedule)}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Source</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-200 break-all">
+                          {schedule.sourcePath}
+                        </div>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-2">
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Created</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-200">
+                          {formatDate(schedule.createdAt)}
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Target</div>
+                        <div className="text-sm text-gray-700 dark:text-gray-200">
+                          {schedule.target ? (
+                            <div className="flex items-center">
+                              <span className="max-w-full truncate" title={schedule.target.name}>
+                                {schedule.target.name}
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 dark:text-gray-500">No target specified</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
@@ -664,7 +877,7 @@ function StorageDetailModal({ isOpen, onClose }: StorageDetailModalProps) {
   const fetchStorageInfo = async () => {
     try {
       setLoading(true);
-      const data = await api.get('/api/storage');
+      const data = await api.get('/targets/storage');
       setStorageInfo(data);
       setError(null);
     } catch (err) {
@@ -1243,11 +1456,9 @@ export default function DashboardStats() {
               </div>
               <div className="ml-4 sm:ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
-                    Active Schedules
-                  </dt>
+                  <dt className="text-sm font-medium text-purple-800 dark:text-purple-300">Total Schedules</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+                    <div className="text-xl sm:text-2xl font-bold text-purple-900 dark:text-purple-200">
                       {stats.activeSchedules}
                     </div>
                   </dd>
@@ -1269,11 +1480,9 @@ export default function DashboardStats() {
               </div>
               <div className="ml-4 sm:ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
-                    Total Storage
-                  </dt>
+                  <dt className="text-sm font-medium text-green-800 dark:text-green-300">Total Storage</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+                    <div className="text-xl sm:text-2xl font-bold text-green-900 dark:text-green-200">
                       {formatStorage(stats.totalStorage)}
                     </div>
                   </dd>
@@ -1295,11 +1504,9 @@ export default function DashboardStats() {
               </div>
               <div className="ml-4 sm:ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 dark:text-gray-300 truncate">
-                    Success Rate
-                  </dt>
+                  <dt className="text-sm font-medium text-amber-800 dark:text-amber-300">Success Rate</dt>
                   <dd className="flex items-baseline">
-                    <div className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+                    <div className="text-xl sm:text-2xl font-bold text-amber-900 dark:text-amber-200">
                       {stats.successRate.toFixed(1)}%
                     </div>
                   </dd>

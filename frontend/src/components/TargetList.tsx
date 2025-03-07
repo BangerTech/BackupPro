@@ -6,6 +6,15 @@ import { PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/react/24/outline';
 import { Dialog } from '@headlessui/react';
 import { api } from '@/lib/api';
 import FileExplorer from './FileExplorer';
+import IconSelector from './IconSelector';
+import { 
+  FolderIcon, ServerIcon, CloudIcon, GlobeAltIcon, 
+  DocumentIcon, ArchiveBoxIcon, ShieldCheckIcon, 
+  CpuChipIcon, DevicePhoneMobileIcon, HomeIcon,
+  ComputerDesktopIcon, CameraIcon, VideoCameraIcon,
+  MusicalNoteIcon, PhotoIcon, FilmIcon, CodeBracketIcon
+} from '@heroicons/react/24/outline';
+import EmojiSelector from './EmojiSelector';
 
 interface TargetConfig {
   path?: string;
@@ -23,6 +32,8 @@ interface Target {
   name: string;
   type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
   path: string;
+  icon: string;
+  emoji?: string;
   config: TargetConfig;
   createdAt: string;
   updatedAt: string;
@@ -36,14 +47,20 @@ export default function TargetList() {
   const [targetToDelete, setTargetToDelete] = useState<string | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingTarget, setEditingTarget] = useState<Target | null>(null);
-  const [editForm, setEditForm] = useState<{
-    name: string;
-    type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
-    config: TargetConfig;
-  }>({
+  const [editForm, setEditForm] = useState({
     name: '',
-    type: 'local',
-    config: {}
+    type: 'local' as 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive',
+    emoji: '',
+    config: {
+      path: '',
+      host: '',
+      port: 22,
+      username: '',
+      password: '',
+      domain: '',
+      share: '',
+      accessToken: '',
+    }
   });
   const [showFileExplorer, setShowFileExplorer] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -103,9 +120,16 @@ export default function TargetList() {
     setEditForm({
       name: target.name,
       type: target.type,
+      emoji: target.emoji || '',
       config: {
-        path: target.path,
-        ...target.config
+        path: target.path || '',
+        host: target.config?.host || '',
+        port: target.config?.port || 22,
+        username: target.config?.username || '',
+        password: target.config?.password || '',
+        domain: target.config?.domain || '',
+        share: target.config?.share || '',
+        accessToken: target.config?.accessToken || '',
       }
     });
     setIsEditModalOpen(true);
@@ -192,6 +216,7 @@ export default function TargetList() {
       const response = await api.put(`/targets/${editingTarget.id}`, {
         name: editForm.name,
         type: editForm.type,
+        emoji: editForm.emoji,
         path: editForm.config.path,
         config: editForm.config
       });
@@ -209,14 +234,15 @@ export default function TargetList() {
     }
   };
 
-  const getTypeIcon = (type: Target['type']) => {
+  // Helper function to get the default emoji based on target type
+  const getDefaultEmoji = (type: Target['type']) => {
     switch (type) {
       case 'local':
         return '💻';
       case 'sftp':
         return '🔒';
       case 'smb':
-        return '🔄';
+        return '🔌';
       case 'dropbox':
         return '📦';
       case 'google_drive':
@@ -242,6 +268,29 @@ export default function TargetList() {
     } catch (error) {
       console.error('Error formatting date:', error, 'Date string:', dateString);
       return 'Invalid date';
+    }
+  };
+
+  // Helper function to get the icon component based on the icon name
+  const getIconComponent = (iconName: string) => {
+    switch (iconName) {
+      case 'server': return ServerIcon;
+      case 'cloud': return CloudIcon;
+      case 'globe': return GlobeAltIcon;
+      case 'document': return DocumentIcon;
+      case 'archive': return ArchiveBoxIcon;
+      case 'shield': return ShieldCheckIcon;
+      case 'chip': return CpuChipIcon;
+      case 'mobile': return DevicePhoneMobileIcon;
+      case 'home': return HomeIcon;
+      case 'desktop': return ComputerDesktopIcon;
+      case 'camera': return CameraIcon;
+      case 'video': return VideoCameraIcon;
+      case 'music': return MusicalNoteIcon;
+      case 'photo': return PhotoIcon;
+      case 'film': return FilmIcon;
+      case 'code': return CodeBracketIcon;
+      default: return FolderIcon;
     }
   };
 
@@ -275,50 +324,52 @@ export default function TargetList() {
   return (
     <>
       <div className="space-y-4">
-        {targets.map((target) => (
-          <div
-            key={target.id}
-            className="bg-white dark:bg-gray-800 shadow rounded-lg p-4"
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center">
-                <span className="text-2xl mr-3">{getTypeIcon(target.type)}</span>
-                <div>
+        {targets.map((target) => {
+          const IconComponent = getIconComponent(target.icon || 'folder');
+          return (
+            <div
+              key={target.id}
+              className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 hover:shadow-md transition-shadow"
+            >
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center">
+                  <span className="text-2xl mr-2">{target.emoji || getDefaultEmoji(target.type)}</span>
                   <h3 className="text-lg font-medium text-gray-900 dark:text-white">
                     {target.name}
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">
-                    Type: {target.type}
-                  </p>
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
-                    Created: {formatDate(target.createdAt)}
-                  </p>
-                  {target.path && (
-                    <p className="text-xs text-gray-400 dark:text-gray-500">
-                      Path: {target.path}
-                    </p>
-                  )}
+                </div>
+                <div className="flex space-x-2">
+                  <button
+                    type="button"
+                    onClick={() => openEditModal(target)}
+                    className="p-2 rounded-md text-gray-400 hover:text-primary-500"
+                  >
+                    <PencilIcon className="h-5 w-5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => openDeleteConfirm(target.id)}
+                    className="p-2 rounded-md text-gray-400 hover:text-red-500"
+                  >
+                    <TrashIcon className="h-5 w-5" />
+                  </button>
                 </div>
               </div>
-              <div className="flex space-x-2">
-                <button
-                  onClick={() => openEditModal(target)}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                  aria-label="Edit target"
-                >
-                  <PencilIcon className="h-5 w-5 text-gray-500 dark:text-gray-400" />
-                </button>
-                <button
-                  onClick={() => openDeleteConfirm(target.id)}
-                  className="p-2 rounded-full hover:bg-gray-100 dark:hover:bg-gray-700"
-                  aria-label="Delete target"
-                >
-                  <TrashIcon className="h-5 w-5 text-red-500" />
-                </button>
+              
+              <div className="text-sm text-gray-500 dark:text-gray-400">
+                Type: {target.type}
               </div>
+              <div className="text-xs text-gray-400 dark:text-gray-500">
+                Created: {formatDate(target.createdAt)}
+              </div>
+              {target.path && (
+                <div className="text-xs text-gray-400 dark:text-gray-500">
+                  Path: {target.path}
+                </div>
+              )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Delete Confirmation Dialog */}
@@ -406,7 +457,14 @@ export default function TargetList() {
                   <select
                     id="type"
                     value={editForm.type}
-                    onChange={(e) => handleEditFormChange('type', e.target.value)}
+                    onChange={(e) => {
+                      handleEditFormChange('type', e.target.value);
+                      // Set default emoji based on type if no emoji is selected
+                      if (!editForm.emoji) {
+                        const newType = e.target.value as Target['type'];
+                        handleEditFormChange('emoji', getDefaultEmoji(newType));
+                      }
+                    }}
                     className="input-field"
                     disabled={isSubmitting}
                   >
@@ -417,6 +475,12 @@ export default function TargetList() {
                     <option value="google_drive">Google Drive</option>
                   </select>
                 </div>
+
+                <EmojiSelector 
+                  value={editForm.emoji}
+                  onChange={(value) => handleEditFormChange('emoji', value)}
+                  defaultEmoji={editForm.type}
+                />
 
                 {/* Dynamic config fields based on type */}
                 {editForm.type === 'local' && (

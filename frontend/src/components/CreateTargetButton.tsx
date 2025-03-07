@@ -5,6 +5,7 @@ import { Dialog } from '@headlessui/react';
 import { PlusIcon, XMarkIcon, InformationCircleIcon } from '@heroicons/react/24/outline';
 import { api } from '@/lib/api';
 import FileExplorer from './FileExplorer';
+import EmojiSelector from './EmojiSelector';
 
 interface TargetConfig {
   path?: string;
@@ -38,6 +39,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
   const [isOpen, setIsOpen] = useState(false);
   const [name, setName] = useState('');
   const [type, setType] = useState<'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive'>('local');
+  const [emoji, setEmoji] = useState('');
   const [config, setConfig] = useState<TargetConfig>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -93,6 +95,24 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
     checkOAuthCallback();
   }, []);
 
+  // Helper function to get the default emoji based on target type
+  const getDefaultEmoji = (type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive') => {
+    switch (type) {
+      case 'local':
+        return '💻';
+      case 'sftp':
+        return '🔒';
+      case 'smb':
+        return '🔌';
+      case 'dropbox':
+        return '📦';
+      case 'google_drive':
+        return '📁';
+      default:
+        return '📄';
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -146,6 +166,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
       await api.post('/targets', {
         name,
         type,
+        emoji: emoji || getDefaultEmoji(type),
         path: config.path,
         config: {
           ...config,
@@ -175,6 +196,7 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
   const resetForm = () => {
     setName('');
     setType('local');
+    setEmoji('');
     setConfig({});
     setShowOAuthInstructions(false);
   };
@@ -336,9 +358,15 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                     id="type"
                     value={type}
                     onChange={(e) => {
-                      setType(e.target.value as any);
+                      const newType = e.target.value as 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
+                      setType(newType);
                       setConfig({}); // Reset config when changing type
                       setShowOAuthInstructions(false);
+                      
+                      // Set default emoji based on type if no emoji is selected
+                      if (!emoji) {
+                        setEmoji(getDefaultEmoji(newType));
+                      }
                     }}
                     className="input-field"
                     disabled={loading}
@@ -350,6 +378,12 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
                     <option value="google_drive">Google Drive</option>
                   </select>
                 </div>
+
+                <EmojiSelector 
+                  value={emoji}
+                  onChange={setEmoji}
+                  defaultEmoji={type}
+                />
 
                 {/* Dynamic config fields based on type */}
                 {type === 'local' && (

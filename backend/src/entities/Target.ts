@@ -16,6 +16,12 @@ export class Target {
   @Column()
   path: string;
 
+  @Column({ default: 'folder' })
+  icon: string;
+
+  @Column({ nullable: true })
+  emoji: string;
+
   @Column({ type: 'json', nullable: true })
   credentials: {
     host?: string;

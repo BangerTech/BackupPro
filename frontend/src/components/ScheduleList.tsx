@@ -3,9 +3,20 @@
 import { useState, useEffect } from 'react';
 import { format } from 'date-fns';
 import { Switch } from '@headlessui/react';
-import { PencilIcon, TrashIcon, CalendarIcon, ClockIcon, FolderIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
+import { 
+  PencilIcon, TrashIcon, CalendarIcon, ClockIcon, FolderIcon, ExclamationCircleIcon
+} from '@heroicons/react/24/outline';
 import { api } from '../lib/api';
 import EditScheduleButton from './EditScheduleButton';
+
+interface Target {
+  id: string;
+  name: string;
+  type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
+  path: string;
+  icon: string;
+  emoji?: string;
+}
 
 interface Schedule {
   id: string;
@@ -17,6 +28,7 @@ interface Schedule {
   timeOfDay: string;
   createdAt: string;
   updatedAt: string;
+  target: Target;
 }
 
 export default function ScheduleList() {
@@ -128,6 +140,31 @@ export default function ScheduleList() {
     }
   };
 
+  // Helper function to get the default emoji based on target type
+  const getTargetEmoji = (target: Target): string => {
+    if (target.emoji) return target.emoji;
+    
+    switch (target.type) {
+      case 'local':
+        return '💻';
+      case 'sftp':
+        return '🔒';
+      case 'smb':
+        return '🔌';
+      case 'dropbox':
+        return '📦';
+      case 'google_drive':
+        return '📁';
+      default:
+        return '📄';
+    }
+  };
+
+  const formatDate = (dateString: string): string => {
+    const date = new Date(dateString);
+    return date.toLocaleString();
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center items-center py-12">
@@ -167,10 +204,13 @@ export default function ScheduleList() {
           key={schedule.id}
           className="bg-white dark:bg-gray-800 shadow rounded-lg p-4 hover:shadow-md transition-shadow"
         >
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">
-              {schedule.name}
-            </h3>
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center">
+              <span className="text-2xl mr-2">{schedule.target ? getTargetEmoji(schedule.target) : '📄'}</span>
+              <h3 className="text-lg font-medium text-gray-900 dark:text-white truncate">
+                {schedule.name}
+              </h3>
+            </div>
             <Switch
               checked={schedule.isActive}
               onChange={() => toggleSchedule(schedule)}
@@ -188,25 +228,40 @@ export default function ScheduleList() {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">
             <div className="flex items-start">
-              <FolderIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-600 dark:text-gray-300 break-all">
-                {schedule.sourcePath}
-              </span>
+              <ClockIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Next Run</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {calculateNextRun(schedule)}
+                </div>
+              </div>
             </div>
             <div className="flex items-start">
               <CalendarIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                {formatDaysOfWeek(schedule.daysOfWeek)} at {schedule.timeOfDay}
-              </span>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Created</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {formatDate(schedule.createdAt)}
+                </div>
+              </div>
             </div>
             <div className="flex items-start">
-              <ClockIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
-              <span className="text-sm text-gray-600 dark:text-gray-300">
-                Next run: {calculateNextRun(schedule)}
-              </span>
+              <FolderIcon className="h-5 w-5 text-gray-400 dark:text-gray-500 mr-2 flex-shrink-0 mt-0.5" />
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Source</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300 break-all">
+                  {schedule.sourcePath}
+                </div>
+              </div>
             </div>
-            <div className="text-sm text-gray-500 dark:text-gray-400">
-              Created: {new Date(schedule.createdAt).toLocaleDateString()} {new Date(schedule.createdAt).toLocaleTimeString()}
+            <div className="flex items-start">
+              <div className="text-xl mr-2 flex-shrink-0 mt-0.5">{schedule.target ? getTargetEmoji(schedule.target) : '📄'}</div>
+              <div>
+                <div className="text-xs text-gray-500 dark:text-gray-400">Target</div>
+                <div className="text-sm text-gray-600 dark:text-gray-300">
+                  {schedule.target?.name || 'Unknown'}
+                </div>
+              </div>
             </div>
           </div>
           

@@ -9,7 +9,7 @@ import FileExplorer from './FileExplorer';
 interface Target {
   id: string;
   name: string;
-  type: 'local' | 'sftp' | 'dropbox' | 'google_drive';
+  type: 'local' | 'sftp' | 'smb' | 'dropbox' | 'google_drive';
 }
 
 interface Schedule {
@@ -150,6 +150,8 @@ export default function EditScheduleButton({ schedule, onScheduleUpdated }: Edit
         return '💻';
       case 'sftp':
         return '🔒';
+      case 'smb':
+        return '🔌';
       case 'dropbox':
         return '📦';
       case 'google_drive':

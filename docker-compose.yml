@@ -9,7 +9,6 @@ services:
       - "${FRONTEND_PORT:-3000}:3000"
     environment:
       - NODE_ENV=${NODE_ENV:-production}
-      - NEXT_PUBLIC_API_URL=http://${HOST_IP:-localhost}:${BACKEND_PORT:-4000}
       - TZ=${TZ:-Europe/Berlin}
     depends_on:
       backend:
