@@ -30,6 +30,10 @@ export class Target {
     password?: string;
     privateKey?: string;
     accessToken?: string;
+    refreshToken?: string;
+    tokenExpiresAt?: number;
+    clientId?: string;
+    clientSecret?: string;
     domain?: string;
     share?: string;
   };

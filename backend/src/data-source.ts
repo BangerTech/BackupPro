@@ -2,6 +2,7 @@ import { DataSource } from "typeorm";
 import { Schedule } from "./entities/Schedule";
 import { Target } from "./entities/Target";
 import { Backup } from "./entities/Backup";
+import { User } from "./entities/User";
 
 export const AppDataSource = new DataSource({
     type: "postgres",
@@ -12,7 +13,7 @@ export const AppDataSource = new DataSource({
     database: process.env.POSTGRES_DB || "backup_schedule",
     synchronize: true,
     logging: false,
-    entities: [Schedule, Target, Backup],
+    entities: [Schedule, Target, Backup, User],
     migrations: [],
     subscribers: [],
 }); 

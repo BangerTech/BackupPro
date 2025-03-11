@@ -18,21 +18,34 @@ const OAUTH_CONFIG = {
   }
 };
 
+// Test endpoint to verify the OAuth router is working
+router.get('/test', (req: Request, res: Response) => {
+  logger.info('OAuth test endpoint called');
+  res.json({ message: 'OAuth router is working!' });
+});
+
 // Exchange authorization code for access token
 router.post('/token', async (req: Request, res: Response) => {
+  logger.info('OAuth token exchange endpoint called with body:', req.body);
+  
   try {
     const { code, provider, redirectUri, clientId, clientSecret } = req.body;
     
+    logger.info(`OAuth token exchange for provider: ${provider}, redirectUri: ${redirectUri}`);
+    
     if (!code || !provider || !redirectUri) {
+      logger.error('Missing required parameters:', { code, provider, redirectUri });
       return res.status(400).json({ error: 'Missing required parameters' });
     }
     
     if (!['dropbox', 'google_drive'].includes(provider)) {
+      logger.error('Invalid provider:', provider);
       return res.status(400).json({ error: 'Invalid provider' });
     }
     
     // Check if OAuth credentials are provided
     if (!clientId || !clientSecret) {
+      logger.error('Missing OAuth credentials for provider:', provider);
       return res.status(400).json({ 
         error: 'Missing OAuth credentials', 
         message: 'Client ID and Client Secret are required' 
@@ -60,6 +73,15 @@ router.post('/token', async (req: Request, res: Response) => {
       });
     } else if (provider === 'google_drive') {
       // Exchange code for Google token
+      logger.info('Exchanging code for Google token with params:', {
+        code: code.substring(0, 10) + '...',  // Log only part of the code for security
+        redirectUri,
+        clientId: clientId.substring(0, 10) + '...',  // Log only part of the client ID for security
+      });
+      
+      // Support for various redirect URIs including loopback IPs
+      // This ensures compatibility with the desktop app flow
+      
       tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: {
@@ -82,12 +104,22 @@ router.post('/token', async (req: Request, res: Response) => {
     }
     
     tokenData = await tokenResponse.json();
+    logger.info('Successfully obtained access token');
+    
+    // Log the token data structure (without sensitive values)
+    logger.info('Token data structure:', {
+      keys: Object.keys(tokenData),
+      hasAccessToken: !!tokenData.access_token,
+      hasRefreshToken: !!tokenData.refresh_token,
+      expiresIn: tokenData.expires_in
+    });
     
     // Return the access token to the client
     res.json({
       accessToken: tokenData.access_token,
-      refreshToken: tokenData.refresh_token,
-      expiresIn: tokenData.expires_in,
+      refreshToken: tokenData.refresh_token || null,
+      expiresIn: tokenData.expires_in || 3600,
+      expiresAt: tokenData.expires_in ? Date.now() + (tokenData.expires_in * 1000) : Date.now() + 3600000,
     });
   } catch (error: unknown) {
     logger.error('OAuth token exchange error:', error);

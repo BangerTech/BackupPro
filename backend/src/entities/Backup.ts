@@ -16,11 +16,17 @@ export class Backup {
   @Column({ nullable: true })
   errorMessage?: string;
 
+  @Column({ nullable: true })
+  error?: string;
+
   @Column({ nullable: true, default: 0 })
   size: number;
 
   @CreateDateColumn()
   createdAt: Date;
+
+  @Column({ nullable: true })
+  completedAt: Date;
 
   @ManyToOne(() => Schedule, schedule => schedule.backups)
   schedule: Schedule;

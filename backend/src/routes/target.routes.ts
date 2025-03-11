@@ -91,11 +91,24 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Create target
 router.post('/', async (req: Request, res: Response) => {
   try {
+    logger.info('Creating target with body:', req.body);
+    
     const { name, type, path, config, icon, emoji } = req.body;
     
     // Validate required fields
-    if (!name || !type || !path) {
-      return res.status(400).json({ error: 'Name, type, and path are required' });
+    if (!name) {
+      logger.warn('Target creation failed: Name is required');
+      return res.status(400).json({ error: 'Name is required' });
+    }
+    
+    if (!type) {
+      logger.warn('Target creation failed: Type is required');
+      return res.status(400).json({ error: 'Type is required' });
+    }
+    
+    if (!path) {
+      logger.warn('Target creation failed: Path is required');
+      return res.status(400).json({ error: 'Path is required' });
     }
     
     // Create the target
@@ -116,6 +129,11 @@ router.post('/', async (req: Request, res: Response) => {
     
     // Set credentials based on type
     if (type === 'sftp') {
+      if (!config || !config.host || !config.username) {
+        logger.warn('Target creation failed: SFTP requires host and username');
+        return res.status(400).json({ error: 'SFTP requires host and username' });
+      }
+      
       target.credentials = {
         host: config.host,
         port: config.port || 22,
@@ -123,6 +141,11 @@ router.post('/', async (req: Request, res: Response) => {
         password: config.password
       };
     } else if (type === 'smb') {
+      if (!config || !config.host || !config.share) {
+        logger.warn('Target creation failed: SMB requires host and share');
+        return res.status(400).json({ error: 'SMB requires host and share' });
+      }
+      
       target.credentials = {
         host: config.host,
         username: config.username,
@@ -131,17 +154,34 @@ router.post('/', async (req: Request, res: Response) => {
         share: config.share
       };
     } else if (type === 'dropbox' || type === 'google_drive') {
+      if (!config || !config.accessToken) {
+        logger.warn(`Target creation failed: ${type} requires accessToken`);
+        return res.status(400).json({ error: `${type} requires accessToken` });
+      }
+      
       target.credentials = {
-        accessToken: config.accessToken
+        accessToken: config.accessToken,
+        refreshToken: config.refreshToken,
+        tokenExpiresAt: config.tokenExpiresAt,
+        clientId: config.clientId,
+        clientSecret: config.clientSecret
       };
     }
     
+    logger.info('Saving target:', {
+      name: target.name,
+      type: target.type,
+      path: target.path,
+      hasCredentials: !!target.credentials
+    });
+    
     // Save the target
     const savedTarget = await targetRepository.save(target);
+    logger.info('Target created successfully with ID:', savedTarget.id);
     res.status(201).json(savedTarget);
   } catch (error) {
     logger.error('Error creating target:', error);
-    res.status(500).json({ error: 'Failed to create target' });
+    res.status(500).json({ error: 'Failed to create target', details: error instanceof Error ? error.message : String(error) });
   }
 });
 
@@ -199,10 +239,34 @@ router.put('/:id', async (req: Request, res: Response) => {
 // Delete target
 router.delete('/:id', async (req: Request, res: Response) => {
   try {
-    const result = await targetRepository.delete({ id: req.params.id });
+    const { id } = req.params;
+    
+    // Find the target to make sure it exists
+    const target = await targetRepository.findOne({
+      where: { id },
+      relations: ['backups']
+    });
+    
+    if (!target) {
+      return res.status(404).json({ error: 'Target not found' });
+    }
+    
+    // Delete all backups associated with this target
+    if (target.backups && target.backups.length > 0) {
+      logger.info(`Deleting ${target.backups.length} backups associated with target ${id}`);
+      
+      // Delete each backup
+      for (const backup of target.backups) {
+        await backupRepository.delete({ id: backup.id });
+      }
+    }
+    
+    // Now delete the target
+    const result = await targetRepository.delete({ id });
     if (result.affected === 0) {
       return res.status(404).json({ error: 'Target not found' });
     }
+    
     res.status(204).send();
   } catch (error) {
     logger.error('Error deleting target:', error);

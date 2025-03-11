@@ -13,6 +13,7 @@ services:
     environment:
       - NODE_ENV=${NODE_ENV:-production}
       - TZ=${TZ:-Europe/Berlin}
+      - NEXT_PUBLIC_GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
     depends_on:
       backend:
         condition: service_healthy
@@ -36,6 +37,9 @@ services:
       - POSTGRES_DB=${POSTGRES_DB:-backup_schedule}
       - FILE_EXPLORER_BASE_DIR=${FILE_EXPLORER_BASE_DIR:-/host_fs}
       - TZ=${TZ:-Europe/Berlin}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
     volumes:
       - /:/host_fs:ro
     depends_on:

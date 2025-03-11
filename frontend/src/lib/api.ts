@@ -1,6 +1,14 @@
 // API configuration
 const API_URL = '/api';
 
+// Auth token for API requests
+let authToken: string | null = null;
+
+// Set auth token for API requests
+export const setAuthToken = (token: string | null) => {
+  authToken = token;
+};
+
 // Remove any double slashes from the path
 const cleanPath = (path: string) => {
   // Remove /api prefix if present as we add it in API_URL
@@ -12,10 +20,17 @@ const cleanPath = (path: string) => {
 export const api = {
   async get(path: string) {
     try {
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      };
+      
+      // Add auth token if available
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(`${API_URL}${cleanPath(path)}`, {
-        headers: {
-          'Accept': 'application/json'
-        },
+        headers,
         credentials: 'include'
       });
       if (!response.ok) {
@@ -30,12 +45,19 @@ export const api = {
 
   async post(path: string, data: any) {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      };
+      
+      // Add auth token if available
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(`${API_URL}${cleanPath(path)}`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify(data),
       });
@@ -51,12 +73,19 @@ export const api = {
 
   async put(path: string, data: any) {
     try {
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      };
+      
+      // Add auth token if available
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(`${API_URL}${cleanPath(path)}`, {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json'
-        },
+        headers,
         credentials: 'include',
         body: JSON.stringify(data),
       });
@@ -72,11 +101,18 @@ export const api = {
 
   async delete(path: string) {
     try {
+      const headers: Record<string, string> = {
+        'Accept': 'application/json'
+      };
+      
+      // Add auth token if available
+      if (authToken) {
+        headers['Authorization'] = `Bearer ${authToken}`;
+      }
+      
       const response = await fetch(`${API_URL}${cleanPath(path)}`, {
         method: 'DELETE',
-        headers: {
-          'Accept': 'application/json'
-        },
+        headers,
         credentials: 'include'
       });
       if (!response.ok) {
