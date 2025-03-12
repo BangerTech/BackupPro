@@ -425,19 +425,18 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
         const deviceId = localStorage.getItem('google_device_id') || `backup-pro-device-${Math.random().toString(36).substring(2, 10)}`;
         localStorage.setItem('google_device_id', deviceId);
         
-        // For Google Drive, we need to use a loopback IP address for the redirect URI
-        // This is a special case for desktop applications
-        const loopbackPort = 3395; // Use a specific port for consistency
-        const loopbackRedirectUri = `http://127.0.0.1:${loopbackPort}`;
+        // For Google Drive, we need to use localhost in the redirect URI
+        // This is because Google OAuth only accepts pre-registered redirect URIs
+        const redirectUri = 'http://localhost:3000/oauth/google_drive/callback';
         
         // Store the redirect URI for the callback
-        localStorage.setItem('google_redirect_uri', loopbackRedirectUri);
+        localStorage.setItem('google_redirect_uri', redirectUri);
         
         // Create URL parameters
         const params = new URLSearchParams();
         params.append('client_id', clientId.trim()); // Trim to remove any whitespace
         params.append('response_type', 'code');
-        params.append('redirect_uri', loopbackRedirectUri);
+        params.append('redirect_uri', redirectUri);
         params.append('scope', OAUTH_CONFIG.google_drive.scope);
         params.append('access_type', 'offline');
         params.append('state', state);
@@ -454,157 +453,11 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
         // Log the auth URL for debugging
         console.log('Google Drive Auth URL:', authUrl);
         
-        // Create a custom HTML page for the Google Drive callback
-        // This will be served locally when Google redirects to the loopback address
-        const googleCallbackHtml = `
-<!DOCTYPE html>
-<html>
-<head>
-  <title>Google Drive Authorization</title>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-      background-color: #f9f9f9;
-      color: #333;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      margin: 0;
-      padding: 20px;
-      box-sizing: border-box;
-    }
-    .container {
-      background-color: white;
-      border-radius: 8px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      padding: 30px;
-      max-width: 500px;
-      width: 100%;
-      text-align: center;
-    }
-    h1 {
-      color: #4285F4;
-      margin-top: 0;
-    }
-    .success {
-      color: #34A853;
-      font-weight: bold;
-    }
-    .error {
-      color: #EA4335;
-      font-weight: bold;
-    }
-    .button {
-      background-color: #4285F4;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      font-size: 16px;
-      cursor: pointer;
-      margin-top: 20px;
-      transition: background-color 0.3s;
-    }
-    .button:hover {
-      background-color: #3367D6;
-    }
-    .url-display {
-      background-color: #f1f3f4;
-      padding: 10px;
-      border-radius: 4px;
-      margin: 20px 0;
-      word-break: break-all;
-      text-align: left;
-      font-family: monospace;
-      font-size: 14px;
-    }
-    .instructions {
-      margin-top: 20px;
-      font-size: 14px;
-      color: #5f6368;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Google Drive Authorization</h1>
-    <div id="status-message"></div>
-    <div id="url-container" class="url-display"></div>
-    <button id="copy-button" class="button">Copy URL to Clipboard</button>
-    <div class="instructions">
-      <p>Please copy this URL and paste it back into the application.</p>
-      <p>You can close this window after copying the URL.</p>
-    </div>
-  </div>
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function() {
-      const urlContainer = document.getElementById('url-container');
-      const copyButton = document.getElementById('copy-button');
-      const statusMessage = document.getElementById('status-message');
-      
-      // Get the current URL
-      const currentUrl = window.location.href;
-      
-      // Display the URL
-      urlContainer.textContent = currentUrl;
-      
-      // Check if there's a code parameter (successful auth)
-      const urlParams = new URLSearchParams(window.location.search);
-      const code = urlParams.get('code');
-      const error = urlParams.get('error');
-      
-      if (code) {
-        statusMessage.innerHTML = '<p class="success">✅ Authorization successful!</p>';
-      } else if (error) {
-        statusMessage.innerHTML = '<p class="error">❌ Authorization failed: ' + error + '</p>';
-      } else {
-        statusMessage.innerHTML = '<p class="error">❌ No authorization code found</p>';
-      }
-      
-      // Copy URL functionality
-      copyButton.addEventListener('click', function() {
-        navigator.clipboard.writeText(currentUrl).then(function() {
-          copyButton.textContent = 'Copied!';
-          setTimeout(function() {
-            copyButton.textContent = 'Copy URL to Clipboard';
-          }, 2000);
-        }).catch(function(err) {
-          console.error('Could not copy text: ', err);
-          // Fallback for browsers that don't support clipboard API
-          const textArea = document.createElement('textarea');
-          textArea.value = currentUrl;
-          document.body.appendChild(textArea);
-          textArea.select();
-          document.execCommand('copy');
-          document.body.removeChild(textArea);
-          copyButton.textContent = 'Copied!';
-          setTimeout(function() {
-            copyButton.textContent = 'Copy URL to Clipboard';
-          }, 2000);
-        });
-      });
-    });
-  </script>
-</body>
-</html>
-        `;
-        
-        // Create a Blob with the HTML content
-        const blob = new Blob([googleCallbackHtml], { type: 'text/html' });
-        const callbackUrl = URL.createObjectURL(blob);
-        
-        // Store the callback URL for later use
-        localStorage.setItem('google_callback_html_url', callbackUrl);
-        
         // Show the OAuth dialog instead of using alert/prompt
         setOAuthService(service);
         setOAuthStep('instructions');
         setShowOAuthDialog(true);
-        setLoopbackRedirectUri(loopbackRedirectUri);
+        setLoopbackRedirectUri(redirectUri);
         setOAuthState(state);
         setOAuthClientId(clientId.trim()); // Trim to remove any whitespace
         setOAuthClientSecret(config.clientSecret?.trim() || ''); // Trim to remove any whitespace
@@ -622,28 +475,6 @@ export default function CreateTargetButton({ onTargetCreated }: CreateTargetButt
         );
         
         setOAuthWindow(authWindow);
-        
-        // Set up a listener for the redirect
-        const checkRedirect = setInterval(() => {
-          try {
-            // Check if the window location has changed to our loopback URI
-            if (authWindow && authWindow.location.href.startsWith('http://127.0.0.1')) {
-              // Clear the interval
-              clearInterval(checkRedirect);
-              
-              // Replace the content with our custom HTML
-              authWindow.location.href = callbackUrl;
-            }
-          } catch (e) {
-            // This will throw a cross-origin error if the window is on a different domain
-            // We can ignore this error
-          }
-        }, 500);
-        
-        // Clear the interval after 5 minutes (300000ms) to prevent memory leaks
-        setTimeout(() => {
-          clearInterval(checkRedirect);
-        }, 300000);
         
         // Don't open the OAuth URL in a popup window for Google Drive
         // We're handling it differently
